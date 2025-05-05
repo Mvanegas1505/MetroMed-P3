@@ -1,16 +1,16 @@
 import kareltherobot.*;
-import java.awt.color.*;;
+import java.awt.Color;
 
 class Racer extends Robot implements Runnable {
-    public Racer(int Street, int Avenue, Direction direction, int beeps) {
-        super(Street, Avenue, direction, beeps);
+    public Racer(int Street, int Avenue, Direction direction, int beeps, Color color) {
+        super(Street, Avenue, direction, beeps, color);
         World.setupThread(this);
     }
 
     public void race() {
-        for(int i = 0; i < 14; i++){
-        super.move();
-        }
+         for(int i = 0; i < 14; i++){
+         super.move();
+         }
         turnRight();
         super.move();
         super.move();
@@ -23,6 +23,20 @@ class Racer extends Robot implements Runnable {
         super.move();
         super.move();
     }
+//     private void irANiquia() {
+//     // Implementar ruta desde el taller hasta Niquía
+//     // (avenida 16-17, calle 14)
+//     while (Avenue() < 16) {
+//         move();
+//     }
+//     turnLeft();
+//     while (Street() > 14) {
+//         move();
+//     }
+//     turnRight();
+//     move(); // Posicionarse en Niquía
+// }
+
 
     public void turnRight(){
         super.turnLeft();
@@ -36,12 +50,13 @@ class Racer extends Robot implements Runnable {
     }
 }
 
+ 
 class RacerB extends Robot implements Runnable {
     private int currentStreet; // Variable para rastrear la calle actual
     private int currentAvenue; // Variable para rastrear la avenida actual
 
-    public RacerB(int street, int avenue, Direction direction, int beeps) {
-        super(street, avenue, direction, beeps);
+    public RacerB(int street, int avenue, Direction direction, int beeps, Color color) {
+        super(street, avenue, direction, beeps, color);
         World.setupThread(this);
         this.currentStreet = street; // Inicializar la calle
         this.currentAvenue = avenue; // Inicializar la avenida
@@ -95,10 +110,12 @@ public class MiPrimerRobot implements Directions {
         // Configuración del mundo
         World.readWorld("MetroMed.kwld");
         World.setVisible(true);
+        World.setDelay(10); // Ajusta la velocidad de los robots
 
         // Crear dos robots
-        Racer Karel1 = new Racer(35, 1, East, 0);
-        RacerB Karel2 = new RacerB(34, 1, East, 0);
+        Racer Karel1 = new Racer(35, 1, East, 0, Color.BLUE);
+        RacerB Karel2 = new RacerB(34, 1, East, 0, Color.GREEN);
+        
         // Cambiar el color del segundo robot a azul
        
 
