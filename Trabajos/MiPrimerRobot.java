@@ -39,29 +39,23 @@ class Racer extends Robot implements Runnable {
     }
 
     private void InitializeRoute() {
-    // Ir hacia la calle 32 desde cualquier calle
-    while (getStreet() > 32) {
-        faceSouth();
-        move();
-    }
-    while (getStreet() < 32) {
-        faceNorth();
-        move();
-    }
-
-    // Ir hacia la avenida 14 desde cualquier avenida
+    if(getAvenue()==14 && getStreet()==32){
+        goToNiquia();
+    } else {
+    // Ir hacia la avenida 14
     while (getAvenue() < 14) {
-        faceEast();
         move();
+        System.out.println("While 1");
     }
-    while (getAvenue() > 14) {
-        faceWest();
-        move();
+    turnRight();
+    for (int i = 0; i < 2; i++) {
+        move();    
     }
-
-    // Ya estamos en (32,14), llamar la función principal
+    turnLeft();
     goToNiquia();
-    }
+}
+}
+
 
     public void goToNiquia() {
         // Moverse hacia el este para acceder a la línea principal
@@ -229,34 +223,35 @@ class Racer extends Robot implements Runnable {
         super.turnLeft();
         super.turnLeft();
     }
-    private void faceNorth() {
-    while (!facingNorth()) {
-        turnLeft();
-    }
-    }
+    // private void faceNorth() {
+    // while (!facingNorth()) {
+    //     turnLeft();
+    //     }
+    // }
 
-    private void faceSouth() {
-        while (!facingSouth()) {
-            turnLeft();
-        }
-    }
+    // private void faceEast() {
+    //     while (!facingEast()) {
+    //         turnLeft();
+    //     }
+    // }
 
-    private void faceEast() {
-        while (!facingEast()) {
-            turnLeft();
-        }
-    }
+    // private void faceSouth() {
+    //     while (!facingSouth()) {
+    //         turnLeft();
+    //     }
+    // }
 
-    private void faceWest() {
-        while (!facingWest()) {
-            turnLeft();
-        }
-    }
+    // private void faceWest() {
+    //     while (!facingWest()) {
+    //         turnLeft();
+    //     }
+    // }
+
 
     @Override
     public void run() {
         InitializeRoute();
-        goToNiquia(); // Ejecuta la ruta hacia Niquía
+        //goToNiquia(); // Ejecuta la ruta hacia Niquía
     }
 }
 
