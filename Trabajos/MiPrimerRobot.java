@@ -1,10 +1,11 @@
 import kareltherobot.*;
 import java.awt.Color;
-//import java.util.concurrent.locks;
-//import java.util.concurrent.semaphores;
-
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.Lock;
 
 class Racer extends Robot implements Runnable {
+
     private int currentStreet; // Variable para rastrear la calle actual
     private int currentAvenue; // Variable para rastrear la avenida actual
     public Racer(int Street, int Avenue, Direction direction, int beeps, Color color) {
@@ -23,22 +24,41 @@ class Racer extends Robot implements Runnable {
     }
 
     @Override
-    public void move() {
-        super.move(); // Llama al método original de `Robot`
+public void move() {
+    int nextStreet = currentStreet; 
+    int nextAvenue = currentAvenue;
 
-        // Actualiza la posición del robot según la dirección actual
-        if (facingNorth()) {
-            currentStreet--;
-        } else if (facingSouth()) {
-            currentStreet++;
-        } else if (facingEast()) {
-            currentAvenue++;
-        } else if (facingWest()) {
-            currentAvenue--;
+    if (facingNorth()) nextStreet--;
+    else if (facingSouth()) nextStreet++;
+    else if (facingEast()) nextAvenue++;
+    else if (facingWest()) nextAvenue--;
+
+    try {
+        // 1. Primero adquirir la nueva posición
+        TrainControl.GetPosition(nextStreet, nextAvenue);
+        
+        // 2. Realizar el movimiento
+        super.move();
+        
+        // 3. Liberar la posición anterior (si no es la inicial)
+        if (currentStreet != 0 && currentAvenue != 0) {
+            TrainControl.FreePosition(currentStreet, currentAvenue);
         }
+        
+        // 4. Actualizar posición actual
+        currentStreet = nextStreet;
+        currentAvenue = nextAvenue;
+        
+    } catch (InterruptedException e) {
+        e.printStackTrace();
     }
+}
+
 
     private void InitializeRoute() {
+    //Coordinate Train's exit from Workshop
+    TallerDeparture.TallerExit(this); // Exit from workshop
+    //If Train already at starting point, Route to niquia starts
     if(getAvenue()==14 && getStreet()==32){
         goToNiquia();
     } else {
@@ -52,6 +72,7 @@ class Racer extends Robot implements Runnable {
         move();    
     }
     turnLeft();
+    System.out.println("Tren llegó al punto de partida: Calle " + getStreet() + ", Avenida " + getAvenue());
     goToNiquia();
 }
 }
@@ -250,7 +271,17 @@ class Racer extends Robot implements Runnable {
 
     @Override
     public void run() {
-        InitializeRoute();
+        try{
+
+         Thread.sleep((this.getStreet() - 31) * 1000); 
+
+         InitializeRoute();
+
+
+        }catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        
         //goToNiquia(); // Ejecuta la ruta hacia Niquía
     }
 }
@@ -375,27 +406,81 @@ class RacerB extends Robot implements Runnable {
     }
 }
 
+class TrainControl {
+    private static Semaphore[][] semaphoreIndex = new Semaphore[36][22]; // Calles 0-35, Avenidas 0-21
+
+    static {
+        for (int i = 0; i < 36; i++) {
+            for (int j = 0; j < 22; j++) {
+                semaphoreIndex[i][j] = new Semaphore(1, true);
+            }
+        }
+    }
+    
+    public static void GetPosition(int street, int avenue) throws InterruptedException {
+        // Validar límites
+        if (street < 0 || street >= 36 || avenue < 0 || avenue >= 22) {
+            throw new InterruptedException("Posición fuera de límites");
+        }
+        System.out.println("Adquiriendo ("+street+","+avenue+")");
+        semaphoreIndex[street][avenue].acquire();
+    }
+    
+    public static void FreePosition(int street, int avenue) {
+        if (street >= 0 && street < 36 && avenue >= 0 && avenue < 22) {
+            System.out.println("Liberando ("+street+","+avenue+")");
+            semaphoreIndex[street][avenue].release();
+        }
+    }
+}
+
+class TallerDeparture {
+    private static Semaphore Exit = new Semaphore(1, true);
+    
+    public static void TallerExit(Racer train) {
+        try {
+            Exit.acquire();
+            System.out.println(train + " iniciando salida del taller");
+            
+            // Mover fuera del taller con semáforos
+            while (train.getAvenue() < 3) {
+                train.move();
+            }
+            
+            System.out.println(train + " salió del taller");
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            Exit.release();
+        }
+    }
+}
+
 public class MiPrimerRobot implements Directions {
     public static void main(String[] args) {
         // Configuración del mundo
         World.readWorld("MetroMed.kwld");
         World.setVisible(true);
-        World.setDelay(10); // Ajusta la velocidad de los robots
+        World.setDelay(20); // Ajusta la velocidad de los robots
 
         // Crear dos robots
         Racer Karel1 = new Racer(32, 14, East, 0, Color.BLUE);
-        //RacerB Karel2 = new RacerB(32, 14, East, 0, Color.GREEN);
-        Racer Karel3 = new Racer(34, 10, East, 0, Color.BLUE);
+        //RacerB Karel2 = new RacerB(34, 9, East, 0, Color.GREEN);
+        Racer Karel3 = new Racer(33, 14, East, 0, Color.BLUE);
+        Racer Karel4 = new Racer(34, 10, East, 0, Color.BLUE);
+
 
         // Iniciar ambos robots como hilos
         Thread thread1 = new Thread(Karel1);
-        //Thread thread2 = new Thread(Karel2);
+       // Thread thread2 = new Thread(Karel2);
         Thread thread3 = new Thread(Karel3);
+        Thread thread4 = new Thread(Karel4);
         
         
         thread1.start();
         //thread2.start();
         thread3.start();
+        thread4.start();
     }   
 }
 
