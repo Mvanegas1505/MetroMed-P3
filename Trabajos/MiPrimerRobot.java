@@ -475,14 +475,13 @@ public class MiPrimerRobot implements Directions {
         // Configuración del mundo
         World.readWorld("MetroMed.kwld");
         World.setVisible(true);
-        World.setDelay(20); // Ajusta la velocidad de los robots
+        World.setDelay(10); // Ajusta la velocidad de los robots
 
         // Crear dos robots
         Racer Karel1 = new Racer(32, 14, East, 0, Color.BLUE);
         //RacerB Karel2 = new RacerB(34, 9, East, 0, Color.GREEN);
         Racer Karel3 = new Racer(33, 14, East, 0, Color.BLUE);
         Racer Karel4 = new Racer(34, 10, East, 0, Color.BLUE);
-
 
         // Iniciar ambos robots como hilos
         Thread thread1 = new Thread(Karel1);
