@@ -7,11 +7,17 @@ import java.util.concurrent.Semaphore;
 class TrainControl {
     private static final int MAX_STREET = 36;
     private static final int MAX_AVENUE = 21;
-
-    private static final Semaphore[][] positionSemaphores = new Semaphore[MAX_STREET + 1][MAX_AVENUE + 1];
-    private static final boolean[][] occupiedPositions = new boolean[MAX_STREET + 1][MAX_AVENUE + 1];
+    
+    // Matriz de semáforos (1 por cada posición)
+    private static Semaphore[][] positionSemaphores = new Semaphore[MAX_STREET + 1][MAX_AVENUE + 1];
+    
+    // Matriz para rastrear qué posiciones están ocupadas
+    private static boolean[][] occupiedPositions = new boolean[MAX_STREET + 1][MAX_AVENUE + 1];
+    
+    // Objeto para sincronizar el acceso a occupiedPositions
     private static final Object lockOccupied = new Object();
-
+    
+    // Inicializar todos los semáforos
     static {
         for (int i = 0; i <= MAX_STREET; i++) {
             for (int j = 0; j <= MAX_AVENUE; j++) {
@@ -19,7 +25,8 @@ class TrainControl {
             }
         }
     }
-
+    
+    // Adquirir permiso para entrar a una posición
     public static void GetPosition(int street, int avenue) throws InterruptedException {
         if (isValidPosition(street, avenue)) {
             positionSemaphores[street][avenue].acquire();
@@ -30,7 +37,8 @@ class TrainControl {
             System.out.println("Posición fuera de límites: (" + street + "," + avenue + ")");
         }
     }
-
+    
+    // Liberar una posición
     public static void FreePosition(int street, int avenue) {
         if (isValidPosition(street, avenue)) {
             synchronized (lockOccupied) {
@@ -39,7 +47,18 @@ class TrainControl {
             positionSemaphores[street][avenue].release();
         }
     }
-
+    
+    // Verificar si una posición está ocupada
+    public static boolean isPositionOccupied(int street, int avenue) {
+        if (isValidPosition(street, avenue)) {
+            synchronized (lockOccupied) {
+                return occupiedPositions[street][avenue];
+            }
+        }
+        return false;
+    }
+    
+    // Verificar que una posición esté dentro de los límites
     private static boolean isValidPosition(int street, int avenue) {
         return street >= 0 && street <= MAX_STREET && avenue >= 0 && avenue <= MAX_AVENUE;
     }
@@ -63,8 +82,13 @@ class Racer extends Robot implements Runnable {
         }
     }
 
-    public int getStreet() { return currentStreet; }
-    public int getAvenue() { return currentAvenue; }
+    public int getStreet() { 
+        return currentStreet; 
+    }
+
+    public int getAvenue() { 
+        return currentAvenue; 
+    }
 
     @Override
     public void move() {
@@ -74,10 +98,18 @@ class Racer extends Robot implements Runnable {
         }
         int nextStreet = currentStreet;
         int nextAvenue = currentAvenue;
-        if (facingNorth()) nextStreet--;
-        else if (facingSouth()) nextStreet++;
-        else if (facingEast()) nextAvenue++;
-        else if (facingWest()) nextAvenue--;
+        if (facingNorth()) {
+            nextStreet--;
+        }
+        else if (facingSouth()) {
+            nextStreet++;
+        }
+        else if (facingEast()) {
+            nextAvenue++;
+        }
+        else if (facingWest()) {
+            nextAvenue--;
+        }
 
         boolean acquired = false;
         while (!acquired) {
@@ -98,7 +130,9 @@ class Racer extends Robot implements Runnable {
     }
 
     public void turnRight() {
-        turnLeft(); turnLeft(); turnLeft();
+        turnLeft(); 
+        turnLeft(); 
+        turnLeft();
     }
 
     private void InitializeRoute() {
@@ -191,74 +225,69 @@ class RacerB extends Racer {
     }
 
     public void moveToSanJavier() {
-         // Moverse hacia el este para acceder a la línea principal
          for(int i = 0; i < 2; i++) {
             super.move();
         }
         
-        // Ahora estamos cerca de la línea principal del metro
-        turnRight(); // Girar hacia el sur
+        turnRight(); 
         for(int i = 0; i < 3; i++) {
-            super.move(); // Moverse hacia el sur siguiendo la línea del metro
+            super.move(); 
         }
         
-        // Ahora debemos estar cerca de la estación San Antonio (intersección central)
-        turnRight(); // Girar hacia el este
+        turnRight(); 
         for(int i = 0; i < 1; i++) {
-            super.move(); // Moverse hacia el este
+            super.move(); 
         }
         
-        turnLeft(); // Girar hacia el norte
-        // Moverse hacia el norte siguiendo la línea hasta Niquía
+        turnLeft(); 
         for(int i = 0; i < 3; i++) {
             super.move();
         }
 
         turnRight();
         for(int i = 0; i < 2; i++) {
-            super.move(); // Moverse hacia el este
+            super.move(); 
         }
 
-        turnLeft(); // Girar hacia el sur
+        turnLeft();
         for (int i = 0; i < 3; i++) {
-            super.move(); // Moverse hacia el sur
+            super.move(); 
         }
         
-        turnRight(); // Girar hacia el este
+        turnRight(); 
         for (int i = 0; i < 2; i++) {
-            super.move(); // Moverse hacia el este
+            super.move(); 
         }
 
-        turnLeft(); // Girar hacia el norte
+        turnLeft();
         for (int i = 0; i < 9; i++) {
-            super.move(); // Moverse hacia el norte
+            super.move(); 
         }
 
         turnRight();
         for (int i = 0; i < 4; i++) {
-            super.move(); // Moverse hacia el sur
+            super.move(); 
         }
 
         turnRight();
-        super.move(); // Moverse hacia el este
+        super.move(); 
 
-        turnLeft(); // Girar hacia el sur
+        turnLeft(); 
         for (int i = 0; i < 5; i++) {
-            super.move(); // Moverse hacia el sur
+            super.move(); 
         }
 
         turnRight();
         for (int i = 0; i < 2; i++) {
-            super.move(); // Moverse hacia el este
+            super.move(); 
         }
 
-        turnLeft(); // Girar hacia el norte
+        turnLeft(); 
         super.move();
         
-        turnLeft(); // Girar hacia el este
-        super.move(); // Moverse hacia el este
+        turnLeft(); 
+        super.move();
         
-        // Simular llegada a la estación
         System.out.println("Llegué a San Javier");
     }
 }
@@ -274,10 +303,18 @@ class RacerC extends Racer {
     }
 
     private void InitializeRouteC() {
-        while (getAvenue() > 1) move();
-        turnLeft(); move(); turnLeft();
-        while (getAvenue() < 14) move();
-        turnRight(); move(); move();
+        while (getAvenue() > 1){ 
+            move();
+        }
+        turnLeft(); 
+        move(); 
+        turnLeft();
+        while (getAvenue() < 14){ 
+            move();
+        }
+        turnRight();
+        move();
+        move();
         turnLeft();
         System.out.println("Tren llegó al punto de partida: Calle " + getStreet() + ", Avenida " + getAvenue());
         goToLaEstrella();
@@ -285,89 +322,84 @@ class RacerC extends Racer {
 
    public void goToLaEstrella() {
         try {
-            // Moverse hacia el este para acceder a la línea principal
             for (int i = 0; i < 2; i++) {
                 move();
             }
 
-            // Ahora estamos cerca de la línea principal del metro
-            turnRight(); // Girar hacia el sur
+            turnRight(); 
             for (int i = 0; i < 3; i++) {
-                move(); // Moverse hacia el sur siguiendo la línea del metro
+                move(); 
             }
 
-            // Ahora debemos estar cerca de la estación San Antonio (intersección central)
-            turnRight(); // Girar hacia el este
+            turnRight();
             for (int i = 0; i < 1; i++) {
-                move(); // Moverse hacia el este
+                move();
             }
 
-            turnLeft(); // Girar hacia el norte
-            // Moverse hacia el norte siguiendo la línea hasta La Estrella
+            turnLeft(); 
             for (int i = 0; i < 3; i++) {
                 move();
             }
 
             turnRight();
             for (int i = 0; i < 2; i++) {
-                move(); // Moverse hacia el este
+                move(); 
             }
 
-            turnLeft(); // Girar hacia el sur
+            turnLeft();
             for (int i = 0; i < 3; i++) {
-                move(); // Moverse hacia el sur
+                move(); 
             }
 
-            turnRight(); // Girar hacia el este
+            turnRight(); 
             for (int i = 0; i < 2; i++) {
-                move(); // Moverse hacia el este
+                move(); 
             }
 
-            turnLeft(); // Girar hacia el norte
+            turnLeft(); 
             for (int i = 0; i < 5; i++) {
-                move(); // Moverse hacia el norte
+                move();
             }
 
-            turnLeft(); // Girar hacia el este
+            turnLeft(); 
             for (int i = 0; i < 5; i++) {
-                move(); // Moverse hacia el este
+                move(); 
             }
 
             turnRight();
             for (int i = 0; i < 7; i++) {
-                move(); // Moverse hacia el sur
+                move(); 
             }
 
             turnRight();
             for (int i = 0; i < 3; i++) {
-                move(); // Moverse hacia el este
+                move(); 
             }
 
-            turnLeft(); // Girar hacia el norte
+            turnLeft(); 
             for (int i = 0; i < 6; i++) {
-                move(); // Moverse hacia el norte
+                move(); 
             }
 
             turnRight();
-            move(); // Moverse hacia el este
+            move(); 
 
-            turnLeft(); // Girar hacia el sur
+            turnLeft(); 
             for (int i = 0; i < 3; i++) {
-                move(); // Moverse hacia el sur
+                move(); 
             }
 
             turnRight();
             for (int i = 0; i < 2; i++) {
-                move(); // Moverse hacia el este
+                move(); 
             }
 
-            turnLeft(); // Girar hacia el norte
+            turnLeft(); 
             move();
 
-            turnLeft(); // Girar hacia el este
-            move(); // Moverse hacia el este
+            turnLeft(); 
+            move(); 
 
-            // Llegamos a La Estrella
             System.out.println("¡Llegué a La Estrella!");
         } catch (Exception e) {
             e.printStackTrace();
@@ -415,7 +447,8 @@ public class MiPrimerRobot implements Directions {
             new RacerC(35, 14, West, 0, Color.BLUE),
             new RacerC(35, 15, West, 0, Color.BLUE),
         };
-
+        
+        // Iniciar los trenes
         for (Racer r : trenes) {
             new Thread(r).start();
         }
