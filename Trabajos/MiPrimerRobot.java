@@ -2,83 +2,89 @@
 import kareltherobot.*;
 import java.awt.Color;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
-// Control de trenes usando semáforos
 class TrainControl {
+
     private static final int MAX_STREET = 36;
     private static final int MAX_AVENUE = 21;
+
+    // Matriz para rastrear qué tren ocupa cada posición (0 = vacío, >0 = ID del tren)
+    private static int[][] occupation = new int[MAX_STREET + 1][MAX_AVENUE + 1];
     
-    // Matriz de semáforos (1 por cada posición)
-    private static Semaphore[][] positionSemaphores = new Semaphore[MAX_STREET + 1][MAX_AVENUE + 1];
-    
-    // Matriz para rastrear qué posiciones están ocupadas
-    private static boolean[][] occupiedPositions = new boolean[MAX_STREET + 1][MAX_AVENUE + 1];
-    
-    // Objeto para sincronizar el acceso a occupiedPositions
-    private static final Object lockOccupied = new Object();
-    
-    // Inicializar todos los semáforos
-    static {
-        for (int i = 0; i <= MAX_STREET; i++) {
-            for (int j = 0; j <= MAX_AVENUE; j++) {
-                positionSemaphores[i][j] = new Semaphore(1, true);
-            }
-        }
-    }
-    
-    // Adquirir permiso para entrar a una posición
-    public static void GetPosition(int street, int avenue) throws InterruptedException {
-        if (isValidPosition(street, avenue)) {
-            positionSemaphores[street][avenue].acquire();
-            synchronized (lockOccupied) {
-                occupiedPositions[street][avenue] = true;
-            }
-        } else {
+    // Lock para proteger el acceso a la matriz
+    private static final Lock lock = new ReentrantLock();
+
+    // Intenta reservar una posición para un tren específico
+    public static boolean reservePosition(int trainId, int street, int avenue) {
+        if (!isValidPosition(street, avenue)) {
             System.out.println("Posición fuera de límites: (" + street + "," + avenue + ")");
+            return false;
         }
-    }
-    
-    // Liberar una posición
-    public static void FreePosition(int street, int avenue) {
-        if (isValidPosition(street, avenue)) {
-            synchronized (lockOccupied) {
-                occupiedPositions[street][avenue] = false;
+        
+        lock.lock();
+        try {
+            if (occupation[street][avenue] == 0) {
+                occupation[street][avenue] = trainId;
+                return true;
             }
-            positionSemaphores[street][avenue].release();
+            return false;
+        } finally {
+            lock.unlock();
         }
     }
-    
-    // Verificar si una posición está ocupada
+
+    // Libera una posición
+    public static void freePosition(int street, int avenue) {
+        if (!isValidPosition(street, avenue)) {
+            return;
+        }
+        
+        lock.lock();
+        try {
+            occupation[street][avenue] = 0;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    // Verifica si una posición está ocupada
     public static boolean isPositionOccupied(int street, int avenue) {
-        if (isValidPosition(street, avenue)) {
-            synchronized (lockOccupied) {
-                return occupiedPositions[street][avenue];
-            }
+        if (!isValidPosition(street, avenue)) {
+            return true; // Considerar posiciones inválidas como ocupadas
         }
-        return false;
+        
+        lock.lock();
+        try {
+            return occupation[street][avenue] != 0;
+        } finally {
+            lock.unlock();
+        }
     }
-    
-    // Verificar que una posición esté dentro de los límites
+
     private static boolean isValidPosition(int street, int avenue) {
-        return street >= 0 && street <= MAX_STREET && avenue >= 0 && avenue <= MAX_AVENUE;
+        return street >= 1 && street <= MAX_STREET && avenue >= 1 && avenue <= MAX_AVENUE;
     }
 }
-
+ 
 // Clase base Racer
 class Racer extends Robot implements Runnable {
     protected int currentStreet;
     protected int currentAvenue;
+    private   int trainId;
     protected boolean isAtStation = false;
 
-    public Racer(int street, int avenue, Direction direction, int beeps, Color color) {
+    public Racer(int trainId, int street, int avenue, Direction direction, int beeps, Color color) {
         super(street, avenue, direction, beeps, color);
-        World.setupThread(this);
+        this.trainId = trainId;
         this.currentStreet = street;
         this.currentAvenue = avenue;
-        try {
-            TrainControl.GetPosition(currentStreet, currentAvenue);
-        } catch (InterruptedException e) {
-            System.out.println("Error al inicializar posición: " + e.getMessage());
+        World.setupThread(this);
+        
+        // Reservar la posición inicial
+        while (!TrainControl.reservePosition(trainId, currentStreet, currentAvenue)) {
+            try { Thread.sleep(50); } catch (InterruptedException e) { e.printStackTrace(); }
         }
     }
 
@@ -93,41 +99,38 @@ class Racer extends Robot implements Runnable {
     @Override
     public void move() {
         if (!frontIsClear()) {
-            System.out.println("¡Pared detectada! No puedo moverme.");
+            System.out.println("¡Pared detectada! Tren " + trainId + " no puede avanzar.");
             return;
         }
+        
+        // Calcular próxima posición
         int nextStreet = currentStreet;
         int nextAvenue = currentAvenue;
-        if (facingNorth()) {
-            nextStreet--;
-        }
-        else if (facingSouth()) {
-            nextStreet++;
-        }
-        else if (facingEast()) {
-            nextAvenue++;
-        }
-        else if (facingWest()) {
-            nextAvenue--;
+        
+        if (facingNorth()) nextStreet++;
+        else if (facingSouth()) nextStreet--;
+        else if (facingEast()) nextAvenue++;
+        else if (facingWest()) nextAvenue--;
+
+        // Esperar hasta que la posición esté disponible
+        while (!TrainControl.reservePosition(trainId, nextStreet, nextAvenue)) {
+            try { Thread.sleep(50); } catch (InterruptedException e) { e.printStackTrace(); }
         }
 
-        boolean acquired = false;
-        while (!acquired) {
-            try {
-                TrainControl.GetPosition(nextStreet, nextAvenue);
-                acquired = true;
-            } catch (InterruptedException e) {
-                System.out.println("Interrupción al adquirir posición: " + e.getMessage());
-            }
-        }
-
+        // Liberar posición actual
+        TrainControl.freePosition(currentStreet, currentAvenue);
+        
+        // Mover físicamente
         super.move();
-        TrainControl.FreePosition(currentStreet, currentAvenue);
+        
+        // Actualizar posición
         currentStreet = nextStreet;
         currentAvenue = nextAvenue;
-        isAtStation = nextToABeeper();
-        System.out.println("Movido a (" + currentStreet + "," + currentAvenue + ")");
+        
+        System.out.println("Tren " + trainId + " movido a (" + currentStreet + "," + currentAvenue + ")");
     }
+
+    // Resto de métodos (turnRight, run, etc.) permanecen iguales
 
     public void turnRight() {
         turnLeft(); 
@@ -201,8 +204,8 @@ class Racer extends Robot implements Runnable {
 }
 
 class RacerB extends Racer {
-    public RacerB(int street, int avenue, Direction direction, int beeps, Color color) {
-        super(street, avenue, direction, beeps, color);
+    public RacerB(int trainId, int street, int avenue, Direction direction, int beeps, Color color) {
+        super(trainId, street, avenue, direction, beeps, color); // Agregar trainId
     }
 
     @Override
@@ -293,8 +296,9 @@ class RacerB extends Racer {
 }
 
 class RacerC extends Racer {
-    public RacerC(int street, int avenue, Direction direction, int beeps, Color color) {
-        super(street, avenue, direction, beeps, color);
+
+    public RacerC(int trainId, int street, int avenue, Direction direction, int beeps, Color color) {
+        super(trainId, street, avenue, direction, beeps, color); // Agregar trainId
     }
 
     @Override
@@ -415,37 +419,37 @@ public class MiPrimerRobot implements Directions {
         World.setDelay(10);
 
         Racer[] trenes = new Racer[] {
-            new Racer(32, 14, East, 0, Color.BLUE),
-            new Racer(33, 14, South, 0, Color.BLUE),
-            new Racer(34, 14, South, 0, Color.BLUE),
-            new Racer(34, 13, East, 0, Color.BLUE),
-            new Racer(34, 12, East, 0, Color.BLUE),
-            new Racer(34, 11, East, 0, Color.BLUE),
-            new Racer(34, 10, East, 0, Color.BLUE),
-            new RacerB(34, 9, East, 0, Color.GREEN),
-            new RacerB(34, 8, East, 0, Color.GREEN),
-            new RacerB(34, 7, East, 0, Color.GREEN),
-            new RacerB(34, 6, East, 0, Color.GREEN),
-            new RacerB(34, 5, East, 0, Color.GREEN),
-            new RacerB(34, 4, East, 0, Color.GREEN),
-            new RacerB(34, 3, East, 0, Color.GREEN),
-            new RacerB(34, 2, East, 0, Color.GREEN),
-            new RacerB(34, 1, East, 0, Color.GREEN),
-            new RacerB(35, 1, South, 0, Color.GREEN),
-            new RacerC(35, 2, West, 0, Color.BLUE),
-            new RacerC(35, 3, West, 0, Color.BLUE),
-            new RacerC(35, 4, West, 0, Color.BLUE),
-            new RacerC(35, 5, West, 0, Color.BLUE),
-            new RacerC(35, 6, West, 0, Color.BLUE),
-            new RacerC(35, 7, West, 0, Color.BLUE),
-            new RacerC(35, 8, West, 0, Color.BLUE),
-            new RacerC(35, 9, West, 0, Color.BLUE),
-            new RacerC(35, 10, West, 0, Color.BLUE),
-            new RacerC(35, 11, West, 0, Color.BLUE),
-            new RacerC(35, 12, West, 0, Color.BLUE),
-            new RacerC(35, 13, West, 0, Color.BLUE),
-            new RacerC(35, 14, West, 0, Color.BLUE),
-            new RacerC(35, 15, West, 0, Color.BLUE),
+            new Racer(1,32, 14, East, 0, Color.BLUE),
+            new Racer(2,33, 14, South, 0, Color.BLUE),
+            new Racer(3,34, 14, South, 0, Color.BLUE),
+            new Racer(4,34, 13, East, 0, Color.BLUE),
+            new Racer(5,34, 12, East, 0, Color.BLUE),
+            new Racer(6,34, 11, East, 0, Color.BLUE),
+            new Racer(7,34, 10, East, 0, Color.BLUE),
+            new RacerB(8,34, 9, East, 0, Color.GREEN),
+            new RacerB(9,34, 8, East, 0, Color.GREEN),
+            new RacerB(10,34, 7, East, 0, Color.GREEN),
+            new RacerB(11,34, 6, East, 0, Color.GREEN),
+            new RacerB(12,34, 5, East, 0, Color.GREEN),
+            new RacerB(13,34, 4, East, 0, Color.GREEN),
+            new RacerB(14,34, 3, East, 0, Color.GREEN),
+            new RacerB(15,34, 2, East, 0, Color.GREEN),
+            new RacerB(16,34, 1, East, 0, Color.GREEN),
+            new RacerB(17,35, 1, South, 0, Color.GREEN),
+            new RacerC(18,35, 2, West, 0, Color.BLUE),
+            new RacerC(19,35, 3, West, 0, Color.BLUE),
+            new RacerC(20,35, 4, West, 0, Color.BLUE),
+            new RacerC(21,35, 5, West, 0, Color.BLUE),
+            new RacerC(22,35, 6, West, 0, Color.BLUE),
+            new RacerC(23, 35, 7, West, 0, Color.BLUE),
+            new RacerC(24,35, 8, West, 0, Color.BLUE),
+            new RacerC(25,35, 9, West, 0, Color.BLUE),
+            new RacerC(26,35, 10, West, 0, Color.BLUE),
+            new RacerC(27,35, 11, West, 0, Color.BLUE),
+            new RacerC(28, 35, 12, West, 0, Color.BLUE),
+            new RacerC(29,35, 13, West, 0, Color.BLUE),
+            new RacerC(30,35, 14, West, 0, Color.BLUE),
+            new RacerC(31,35, 15, West, 0, Color.BLUE),
         };
         
         // Iniciar los trenes
