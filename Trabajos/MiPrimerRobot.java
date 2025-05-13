@@ -2,28 +2,26 @@
 import kareltherobot.*;
 import java.awt.Color;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 class TrainControl {
 
-    private static final int MAX_STREET = 36;
-    private static final int MAX_AVENUE = 21;
-
-    // Matriz para rastrear qué tren ocupa cada posición (0 = vacío, >0 = ID del tren)
-    private static int[][] occupation = new int[MAX_STREET + 1][MAX_AVENUE + 1];
+    // Matriz de 36 x 22 representando las calles y las avenidas del mundo
+    private static int[][] occupation = new int[37][22]; //1-37 - 1-22
     
-    // Lock para proteger el acceso a la matriz
+    // Lock for protecting matrix access
     private static final Lock lock = new ReentrantLock();
 
-    // Intenta reservar una posición para un tren específico
+    // Reservar una posición del metro para evitar choques
     public static boolean reservePosition(int trainId, int street, int avenue) {
         if (!isValidPosition(street, avenue)) {
             System.out.println("Posición fuera de límites: (" + street + "," + avenue + ")");
             return false;
         }
         
-        lock.lock();
+        lock.lock(); // Inicio seccion critica 
         try {
             if (occupation[street][avenue] == 0) {
                 occupation[street][avenue] = trainId;
@@ -31,21 +29,21 @@ class TrainControl {
             }
             return false;
         } finally {
-            lock.unlock();
+            lock.unlock(); //Fin de la seccion critica 
         }
     }
 
-    // Libera una posición
+    // Libera posicion ocupada por un tren 
     public static void freePosition(int street, int avenue) {
         if (!isValidPosition(street, avenue)) {
             return;
         }
         
-        lock.lock();
+        lock.lock(); // Inicio Seccion critica 
         try {
-            occupation[street][avenue] = 0;
+            occupation[street][avenue] = 0; // Modificar matriz 
         } finally {
-            lock.unlock();
+            lock.unlock(); //Fin de Seccion Critica
         }
     }
 
@@ -64,7 +62,7 @@ class TrainControl {
     }
 
     private static boolean isValidPosition(int street, int avenue) {
-        return street >= 1 && street <= MAX_STREET && avenue >= 1 && avenue <= MAX_AVENUE;
+        return street >= 1 && street <= 36 && avenue >= 1 && avenue <= 22;
     }
 }
  
@@ -197,9 +195,180 @@ class Racer extends Robot implements Runnable {
         System.out.println("¡Llegue a Niquía!");
     }
 
+    public void Niquia_Estrella(){
+        move();
+        move();
+        move();
+        turnLeft();
+        move();
+        move();
+        move();
+        for (int i = 0; i < 3; i++) {
+                move(); 
+            }
+
+            turnRight();
+            for (int i = 0; i < 1; i++) {
+                move();
+            }
+
+            turnLeft(); 
+            for (int i = 0; i < 3; i++) {
+                move();
+            }
+
+            turnRight();
+            for (int i = 0; i < 2; i++) {
+                move(); 
+            }
+
+            turnLeft();
+            for (int i = 0; i < 3; i++) {
+                move(); 
+            }
+
+            turnRight(); 
+            for (int i = 0; i < 2; i++) {
+                move(); 
+            }
+
+            turnLeft(); 
+            for (int i = 0; i < 5; i++) {
+                move();
+            }
+
+            turnLeft(); 
+            for (int i = 0; i < 5; i++) {
+                move(); 
+            }
+
+            turnRight();
+            for (int i = 0; i < 7; i++) {
+                move(); 
+            }
+
+            turnRight();
+            for (int i = 0; i < 3; i++) {
+                move(); 
+            }
+
+            turnLeft(); 
+            for (int i = 0; i < 6; i++) {
+                move(); 
+            }
+
+            turnRight();
+            move(); 
+
+            turnLeft(); 
+            for (int i = 0; i < 3; i++) {
+                move(); 
+            }
+
+            turnRight();
+            for (int i = 0; i < 2; i++) {
+                move(); 
+            }
+
+            turnLeft(); 
+            move();
+
+            turnLeft(); 
+            move(); 
+
+        System.out.println("¡Llegué a La Estrella!");
+        
+        
+
+ }
+
+    public void Estrella_Niquia(){
+
+        move();
+        move();
+        turnLeft();
+        move();
+        move();
+        move();
+        turnRight();
+        move();
+        turnLeft();
+        for(int i = 0; i < 7; i++) {
+            move();
+        }
+        turnRight();
+        move();
+        move();
+        move();
+        turnLeft();
+        for(int i = 0; i < 10; i++) {
+            move();
+        }
+        turnLeft();
+        for(int i = 0; i < 6; i++) {
+            move();
+        }
+        turnRight();
+        move();
+        move();
+        move();
+        turnRight();
+        move();
+        move();
+        turnLeft();
+        move();
+        move();
+        move();
+        turnRight();
+        move();
+        move();
+        turnLeft();
+        move();
+        move();
+        move();
+        turnRight();
+        move();
+        move();
+        turnLeft();
+        move();
+        move();
+        move();
+        turnRight();
+        move();
+        turnLeft();
+        for(int i = 0; i < 7; i++) {
+            move();
+        }
+        turnRight();
+        move();
+        move();
+        move();
+        turnLeft();
+        move();
+        turnLeft();
+        move();
+        System.out.println("¡Llegué a Niquía!");
+
+
+
+
+    }
+
+
+
     @Override
     public void run() {
         InitializeRoute();
+
+        while (!MiPrimerRobot.startSignal.get()) {
+                try {
+                    Thread.sleep(100); // Esperar brevemente antes de verificar nuevamente
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        Niquia_Estrella();
+        Estrella_Niquia();
     }
 }
 
@@ -211,6 +380,7 @@ class RacerB extends Racer {
     @Override
     public void run() {
         InitializeRouteB();
+        
     }
 
     private void InitializeRouteB() {
@@ -304,6 +474,18 @@ class RacerC extends Racer {
     @Override
     public void run() {
         InitializeRouteC();
+
+         // Esperar la señal para comenzar el movimiento
+        while (!MiPrimerRobot.startSignal.get()) {
+            try {
+                Thread.sleep(100); // Esperar brevemente antes de verificar nuevamente
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        Estrella_Niquia();
+        Niquia_Estrella();
     }
 
     private void InitializeRouteC() {
@@ -413,10 +595,12 @@ class RacerC extends Racer {
 
 // Clase principal
 public class MiPrimerRobot implements Directions {
+
+     public static final AtomicBoolean startSignal = new AtomicBoolean(false);
     public static void main(String[] args) {
         World.readWorld("MetroMed.kwld");
         World.setVisible(true);
-        World.setDelay(10);
+        World.setDelay(20);
 
         Racer[] trenes = new Racer[] {
             new Racer(1,32, 14, East, 0, Color.BLUE),
@@ -451,10 +635,22 @@ public class MiPrimerRobot implements Directions {
             new RacerC(30,35, 14, West, 0, Color.BLUE),
             new RacerC(31,35, 15, West, 0, Color.BLUE),
         };
+
+        // Mostrar mensaje para esperar la entrada del usuario
+        System.out.println("Los trenes están posicionados en sus rutas respectivas.");
+        System.out.println("Presiona Enter cuando sean las 4:20 para iniciar el movimiento.");
         
         // Iniciar los trenes
         for (Racer r : trenes) {
             new Thread(r).start();
+        }
+
+          // Esperar la entrada del usuario
+        try {
+            System.in.read(); // Espera a que el usuario presione Enter
+            startSignal.set(true); // Enviar la señal para que los trenes comiencen a moverse
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 }
