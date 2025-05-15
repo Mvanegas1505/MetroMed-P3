@@ -136,6 +136,17 @@ class Racer extends Robot implements Runnable {
         turnLeft();
     }
 
+    public void moveCheckBeeper() {
+            if (nextToABeeper()) {
+        try {
+            Thread.sleep(3000); // Espera 3 segundos
+        } catch (InterruptedException e) {
+            e.printStackTrace(); // Imprime el error si ocurre
+        }
+    }
+    move(); // Luego avanza normalmente
+    }
+
     private void InitializeRoute() {
     // Verificar si el tren ya está en el punto de partida
     if (getStreet() == 33 && getAvenue() == 14) {
@@ -196,85 +207,85 @@ class Racer extends Robot implements Runnable {
     }
 
     public void Niquia_Estrella(){
-        move();
-        move();
-        move();
+        moveCheckBeeper();
+        moveCheckBeeper();
+        moveCheckBeeper();
         turnLeft();
-        move();
-        move();
-        move();
+        moveCheckBeeper();
+        moveCheckBeeper();
+        moveCheckBeeper();
         for (int i = 0; i < 3; i++) {
-                move(); 
+                moveCheckBeeper(); 
             }
 
             turnRight();
             for (int i = 0; i < 1; i++) {
-                move();
+                moveCheckBeeper();
             }
 
             turnLeft(); 
             for (int i = 0; i < 3; i++) {
-                move();
+                moveCheckBeeper();
             }
 
             turnRight();
             for (int i = 0; i < 2; i++) {
-                move(); 
+                moveCheckBeeper(); 
             }
 
             turnLeft();
             for (int i = 0; i < 3; i++) {
-                move(); 
+                moveCheckBeeper();
             }
 
             turnRight(); 
             for (int i = 0; i < 2; i++) {
-                move(); 
+                moveCheckBeeper(); 
             }
 
             turnLeft(); 
             for (int i = 0; i < 5; i++) {
-                move();
+                moveCheckBeeper();
             }
 
             turnLeft(); 
             for (int i = 0; i < 5; i++) {
-                move(); 
+                moveCheckBeeper();
             }
 
             turnRight();
             for (int i = 0; i < 7; i++) {
-                move(); 
+                moveCheckBeeper();
             }
 
             turnRight();
             for (int i = 0; i < 3; i++) {
-                move(); 
+                moveCheckBeeper();
             }
 
             turnLeft(); 
             for (int i = 0; i < 6; i++) {
-                move(); 
+                moveCheckBeeper();
             }
 
             turnRight();
-            move(); 
+            moveCheckBeeper();
 
             turnLeft(); 
             for (int i = 0; i < 3; i++) {
-                move(); 
+                moveCheckBeeper();
             }
 
             turnRight();
             for (int i = 0; i < 2; i++) {
-                move(); 
+                moveCheckBeeper();
             }
 
             turnLeft(); 
-            move();
+            moveCheckBeeper();
 
             turnLeft(); 
-            move(); 
+            moveCheckBeeper();
 
         System.out.println("¡Llegué a La Estrella!");
         
@@ -284,77 +295,65 @@ class Racer extends Robot implements Runnable {
 
     public void Estrella_Niquia(){
 
-        move();
-        move();
+        moveCheckBeeper();
+        moveCheckBeeper();
         turnLeft();
-        move();
-        move();
-        move();
+        moveCheckBeeper();
+        moveCheckBeeper();
+        moveCheckBeeper();
         turnRight();
-        move();
+        moveCheckBeeper();
         turnLeft();
         for(int i = 0; i < 7; i++) {
-            move();
+            moveCheckBeeper();
         }
         turnRight();
-        move();
-        move();
-        move();
+        moveCheckBeeper();
+        moveCheckBeeper();
+        moveCheckBeeper();
         turnLeft();
         for(int i = 0; i < 10; i++) {
-            move();
+            moveCheckBeeper();
         }
         turnLeft();
         for(int i = 0; i < 6; i++) {
-            move();
+            moveCheckBeeper();
         }
         turnRight();
-        move();
-        move();
-        move();
+        moveCheckBeeper();
+        moveCheckBeeper();
+        moveCheckBeeper();
         turnRight();
-        move();
-        move();
+        moveCheckBeeper();
+        moveCheckBeeper();
         turnLeft();
-        move();
-        move();
-        move();
+        moveCheckBeeper();
+        moveCheckBeeper();
+        moveCheckBeeper();
         turnRight();
-        move();
-        move();
+        moveCheckBeeper();
+        moveCheckBeeper();
         turnLeft();
-        move();
-        move();
-        move();
+        moveCheckBeeper();
+        moveCheckBeeper();
+        moveCheckBeeper();
         turnRight();
-        move();
-        move();
-        turnLeft();
-        move();
-        move();
-        move();
-        turnRight();
-        move();
+        moveCheckBeeper();
         turnLeft();
         for(int i = 0; i < 7; i++) {
-            move();
+            moveCheckBeeper();
         }
         turnRight();
-        move();
-        move();
-        move();
+        moveCheckBeeper();
+        moveCheckBeeper();
+        moveCheckBeeper();
         turnLeft();
-        move();
+        moveCheckBeeper();
         turnLeft();
-        move();
+        moveCheckBeeper();
         System.out.println("¡Llegué a Niquía!");
 
-
-
-
     }
-
-
 
     @Override
     public void run() {
@@ -362,7 +361,7 @@ class Racer extends Robot implements Runnable {
 
         while (!MiPrimerRobot.startSignal.get()) {
                 try {
-                    Thread.sleep(100); // Esperar brevemente antes de verificar nuevamente
+                    Thread.sleep(100);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -600,7 +599,7 @@ public class MiPrimerRobot implements Directions {
     public static void main(String[] args) {
         World.readWorld("MetroMed.kwld");
         World.setVisible(true);
-        World.setDelay(20);
+        World.setDelay(5);
 
         Racer[] trenes = new Racer[] {
             new Racer(1,32, 14, East, 0, Color.BLUE),
