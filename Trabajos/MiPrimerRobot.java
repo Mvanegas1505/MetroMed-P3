@@ -473,7 +473,6 @@ class RacerC extends Racer {
     @Override
     public void run() {
         InitializeRouteC();
-
          // Esperar la señal para comenzar el movimiento
         while (!MiPrimerRobot.startSignal.get()) {
             try {
@@ -488,6 +487,10 @@ class RacerC extends Racer {
     }
 
     private void InitializeRouteC() {
+        if (getStreet() == 34 && getAvenue() == 15) {
+            move();
+            turnLeft();
+        }
         while (getAvenue() > 1){ 
             move();
         }
@@ -633,6 +636,7 @@ public class MiPrimerRobot implements Directions {
             new RacerC(29,35, 13, West, 0, Color.BLUE),
             new RacerC(30,35, 14, West, 0, Color.BLUE),
             new RacerC(31,35, 15, West, 0, Color.BLUE),
+            new RacerC(32,34, 15, North, 0, Color.BLUE),
         };
 
         // Mostrar mensaje para esperar la entrada del usuario
