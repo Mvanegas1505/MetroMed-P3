@@ -8,6 +8,9 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.Collections;
 
 
 
@@ -430,31 +433,12 @@ class Racer extends Robot implements Runnable {
 }
 
 class RacerB extends Racer {
-
     private static final ReentrantLock cisnerosLock = new ReentrantLock();
     private static boolean cisnerosOcupado = false;
-    
-    // Coordenadas de las estaciones en la ruta San Javier
-    private static final int[][] estacionesSanJavier = {
-        {16,1}, {14,5}, {13,9}, {13,12}, {14,15}, // Hasta San Antonio B
-        {14,12}, {14,9}, {15,5}, {16,2}           // Regreso
-    };
+    private static final Set<Integer> primeraSalida = Collections.synchronizedSet(new HashSet<>());
+
     public RacerB(int trainId, int street, int avenue, Direction direction, int beeps, Color color) {
-        super(trainId, street, avenue, direction, beeps, color); // Agregar trainId
-    }
-
-    public void run() {
-        InitializeRouteB();
-
-        // Esperar señal de inicio
-        while (!MiPrimerRobot.startSignal.get()) {
-            try { Thread.sleep(100); } catch (InterruptedException e) { e.printStackTrace(); }
-        }
-
-        // Recorrido continuo
-        while (true) {
-            recorridoSanJavier();
-        }
+        super(trainId, street, avenue, direction, beeps, color);
     }
 
     private void InitializeRouteB() {
@@ -538,42 +522,88 @@ class RacerB extends Racer {
         System.out.println("Llegué a San Javier");
     }
 
-    public void recorridoSanJavier() {
-        // Primera parte del recorrido (ida)
-        desde16_1hasta14_15();
-        
-        // Condición especial en Cisneros (antes de San Antonio B)
-        manejarCisneros();
-        
-        // Segunda parte del recorrido (regreso)
-        desde14_15hasta16_2();
-        
-        // Volver al inicio
-        desde16_2hasta16_1();
+    public void SanJavier_SanAntonio() {
+        moveCheckBeeper();
+        moveCheckBeeper();
+        turnLeft();
+        moveCheckBeeper();
+        moveCheckBeeper();
+        moveCheckBeeper();
+        turnRight();
+        moveCheckBeeper();
+        turnLeft();
+        for(int i = 0; i < 7; i++) {
+            moveCheckBeeper();
+        }
+        turnRight();
+        moveCheckBeeper();
+        moveCheckBeeper();
+        moveCheckBeeper();
+        turnLeft();
+        for(int i = 0; i < 10; i++) {
+            moveCheckBeeper();
+        }
+        turnLeft();
+        for(int i = 0; i < 6; i++) {
+            moveCheckBeeper();
+        }
+        turnRight();
+        moveCheckBeeper();
+        moveCheckBeeper();
+        moveCheckBeeper();
+        turnRight();
+        moveCheckBeeper();
+        moveCheckBeeper();
+        turnLeft();
+        moveCheckBeeper();
+        moveCheckBeeper();
+        moveCheckBeeper();
+        turnRight();
+        moveCheckBeeper();
+        moveCheckBeeper();
+        turnLeft();
+        moveCheckBeeper();
+        moveCheckBeeper();
+        moveCheckBeeper();
+        turnRight();
+        moveCheckBeeper(); 
     }
 
-    private void desde16_1hasta14_15() {
-        // 16,1 -> 14,5
-        turnRight();
-        for (int i = 0; i < 4; i++) moveCheckBeeper();
-        turnLeft();
-        for (int i = 0; i < 2; i++) moveCheckBeeper();
+    public void SanAntonio_SanJavier() {
+        // Condición especial en Cisneros (antes de regresar)
+        manejarCisneros();
         
-        // 14,5 -> 13,9
-        turnRight();
+        turnLeft();
+        turnLeft();
         moveCheckBeeper();
-        turnLeft();
-        for (int i = 0; i < 4; i++) moveCheckBeeper();
-        
-        // 13,9 -> 13,12
-        for (int i = 0; i < 3; i++) moveCheckBeeper();
-        
-        // 13,12 -> 14,15
-        turnLeft();
+        moveCheckBeeper();
         moveCheckBeeper();
         turnRight();
         moveCheckBeeper();
+        turnLeft();
+        for(int i = 0; i < 7; i++) {
+            moveCheckBeeper();
+        }
         turnRight();
+        moveCheckBeeper();
+        moveCheckBeeper();
+        moveCheckBeeper();
+        turnLeft();
+        for(int i = 0; i < 10; i++) {
+            moveCheckBeeper();
+        }
+        turnLeft();
+        for(int i = 0; i < 6; i++) {
+            moveCheckBeeper();
+        }
+        turnRight();
+        moveCheckBeeper();
+        moveCheckBeeper();
+        moveCheckBeeper();
+        turnRight();
+        moveCheckBeeper();
+        moveCheckBeeper();
+        turnLeft();
         moveCheckBeeper();
     }
 
@@ -594,11 +624,6 @@ class RacerB extends Racer {
                 try { Thread.sleep(100); } catch (InterruptedException e) { break; }
             }
             
-            // Movimiento de salida de Cisneros
-            turnLeft();
-            turnLeft();
-            moveCheckBeeper();
-            
         } finally {
             cisnerosOcupado = false;
             
@@ -606,35 +631,22 @@ class RacerB extends Racer {
         }
     }
 
-    private void desde14_15hasta16_2() {
-        // 14,15 -> 14,12
-        for (int i = 0; i < 3; i++) moveCheckBeeper();
-        
-        // 14,12 -> 14,9
-        for (int i = 0; i < 3; i++) moveCheckBeeper();
-        
-        // 14,9 -> 15,5
-        turnRight();
-        moveCheckBeeper();
-        turnLeft();
-        for (int i = 0; i < 4; i++) moveCheckBeeper();
-        
-        // 15,5 -> 16,2
-        turnRight();
-        for (int i = 0; i < 2; i++) moveCheckBeeper();
-        turnLeft();
-        moveCheckBeeper();
-    }
+    @Override
+    public void run() {
+        InitializeRouteB();
 
-    private void desde16_2hasta16_1() {
-        // 16,2 -> 16,1
-        turnLeft();
-        moveCheckBeeper();
-        turnLeft();
-        moveCheckBeeper();
+        // Esperar señal de inicio
+        while (!MiPrimerRobot.startSignal.get()) {
+            try { Thread.sleep(100); } catch (InterruptedException e) { e.printStackTrace(); }
+        }
+
+        // Recorrido continuo
+        while (true) {
+            SanJavier_SanAntonio();
+            SanAntonio_SanJavier();
+        }
     }
 }
-
 
 class RacerC extends Racer {
 
