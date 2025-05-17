@@ -2,15 +2,39 @@
 import kareltherobot.*;
 import java.awt.Color;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.HashMap;
+import java.util.Map;
+
+
 
 class TrainControl {
 
     // Matriz de 36 x 22 representando las calles y las avenidas del mundo
     private static int[][] occupation = new int[37][22]; //1-37 - 1-22
-    
+
+     
+    // Matriz de estaciones (beeper positions)
+    private static final int[][] ESTACIONES = {
+        {35,19}, {34,19}, {31,16}, {31,17}, {27,15}, {27,16}, 
+        {24,13}, {24,14}, {20,11}, {20,12}, {19,14}, {18,14},
+        {16,16}, {16,17}, {14,16}, {14,17}, {12,16}, {12,17},
+        {11,15}, {10,15}, {9,13}, {9,14}, {6,13}, {6,14},
+        {3,12}, {3,13}, {2,11}, {1,11}, {16,1}, {16,2},
+        {15,5}, {14,5}, {14,9}, {13,9}, {14,12}, {13,12}, {14,15}
+    };
+
+    public static boolean isStation(int street, int avenue) {
+        for (int[] estacion : ESTACIONES) {
+            if (estacion[0] == street && estacion[1] == avenue) {
+                return true;
+            }
+        }
+        return false;
+    }
     // Lock for protecting matrix access
     private static final Lock lock = new ReentrantLock();
 
@@ -41,7 +65,7 @@ class TrainControl {
         
         lock.lock(); // Inicio Seccion critica 
         try {
-            occupation[street][avenue] = 0; // Modificar matriz 
+            occupation[street][avenue] = 0; 
         } finally {
             lock.unlock(); //Fin de Seccion Critica
         }
@@ -64,8 +88,8 @@ class TrainControl {
     private static boolean isValidPosition(int street, int avenue) {
         return street >= 1 && street <= 36 && avenue >= 1 && avenue <= 22;
     }
+
 }
- 
 // Clase base Racer
 class Racer extends Robot implements Runnable {
     protected int currentStreet;
@@ -115,6 +139,7 @@ class Racer extends Robot implements Runnable {
             try { Thread.sleep(50); } catch (InterruptedException e) { e.printStackTrace(); }
         }
 
+        
         // Liberar posición actual
         TrainControl.freePosition(currentStreet, currentAvenue);
         
@@ -136,16 +161,49 @@ class Racer extends Robot implements Runnable {
         turnLeft();
     }
 
-    public void moveCheckBeeper() {
-            if (nextToABeeper()) {
-        try {
-            Thread.sleep(3000); // Espera 3 segundos
-        } catch (InterruptedException e) {
-            e.printStackTrace(); // Imprime el error si ocurre
+     public void moveCheckBeeper() {
+        if (!frontIsClear()) {
+        System.out.println("¡Pared detectada! Tren " + trainId + " no puede avanzar.");
+        return;
+    }
+
+    // Calcular próxima posición
+    int nextStreet = currentStreet;
+    int nextAvenue = currentAvenue;
+    
+    if (facingNorth()) nextStreet++;
+    else if (facingSouth()) nextStreet--;
+    else if (facingEast()) nextAvenue++;
+    else if (facingWest()) nextAvenue--;
+
+    // Esperar hasta que la posición esté disponible
+    while (!TrainControl.reservePosition(trainId, nextStreet, nextAvenue)) {
+        try { Thread.sleep(50); } catch (InterruptedException e) { e.printStackTrace(); }
+    }
+
+    // ANTES de moverse: verificar si la posición actual es estación
+    if (nextToABeeper() && TrainControl.isStation(currentStreet, currentAvenue)) {
+        System.out.println("🚉 Tren " + trainId + " EN estación (" + currentStreet + "," + currentAvenue + ")");
+        long startTime = System.currentTimeMillis();
+        while (System.currentTimeMillis() - startTime < 3000) {
+            try { Thread.sleep(100); } catch (InterruptedException e) { break; }
         }
+        System.out.println("🚉 Tren " + trainId + " SALE de estación");
     }
-    move(); // Luego avanza normalmente
-    }
+
+    // Liberar posición actual
+    TrainControl.freePosition(currentStreet, currentAvenue);
+    
+    // Movimiento físico
+    super.move();
+    
+    // Actualizar posición interna
+    currentStreet = nextStreet;
+    currentAvenue = nextAvenue;
+    
+    System.out.println("Tren " + trainId + " en (" + currentStreet + "," + currentAvenue + ")");
+}
+    
 
     private void InitializeRoute() {
     // Verificar si el tren ya está en el punto de partida
@@ -372,14 +430,31 @@ class Racer extends Robot implements Runnable {
 }
 
 class RacerB extends Racer {
+
+    private static final ReentrantLock cisnerosLock = new ReentrantLock();
+    private static boolean cisnerosOcupado = false;
+    
+    // Coordenadas de las estaciones en la ruta San Javier
+    private static final int[][] estacionesSanJavier = {
+        {16,1}, {14,5}, {13,9}, {13,12}, {14,15}, // Hasta San Antonio B
+        {14,12}, {14,9}, {15,5}, {16,2}           // Regreso
+    };
     public RacerB(int trainId, int street, int avenue, Direction direction, int beeps, Color color) {
         super(trainId, street, avenue, direction, beeps, color); // Agregar trainId
     }
 
-    @Override
     public void run() {
         InitializeRouteB();
-        
+
+        // Esperar señal de inicio
+        while (!MiPrimerRobot.startSignal.get()) {
+            try { Thread.sleep(100); } catch (InterruptedException e) { e.printStackTrace(); }
+        }
+
+        // Recorrido continuo
+        while (true) {
+            recorridoSanJavier();
+        }
     }
 
     private void InitializeRouteB() {
@@ -462,7 +537,104 @@ class RacerB extends Racer {
         
         System.out.println("Llegué a San Javier");
     }
+
+    public void recorridoSanJavier() {
+        // Primera parte del recorrido (ida)
+        desde16_1hasta14_15();
+        
+        // Condición especial en Cisneros (antes de San Antonio B)
+        manejarCisneros();
+        
+        // Segunda parte del recorrido (regreso)
+        desde14_15hasta16_2();
+        
+        // Volver al inicio
+        desde16_2hasta16_1();
+    }
+
+    private void desde16_1hasta14_15() {
+        // 16,1 -> 14,5
+        turnRight();
+        for (int i = 0; i < 4; i++) moveCheckBeeper();
+        turnLeft();
+        for (int i = 0; i < 2; i++) moveCheckBeeper();
+        
+        // 14,5 -> 13,9
+        turnRight();
+        moveCheckBeeper();
+        turnLeft();
+        for (int i = 0; i < 4; i++) moveCheckBeeper();
+        
+        // 13,9 -> 13,12
+        for (int i = 0; i < 3; i++) moveCheckBeeper();
+        
+        // 13,12 -> 14,15
+        turnLeft();
+        moveCheckBeeper();
+        turnRight();
+        moveCheckBeeper();
+        turnRight();
+        moveCheckBeeper();
+    }
+
+    private void manejarCisneros() {
+        cisnerosLock.lock();
+        try {
+            // Esperar si Cisneros está ocupado
+            while (cisnerosOcupado) {
+                try { Thread.sleep(100); } catch (InterruptedException e) { e.printStackTrace(); }
+            }
+            
+            cisnerosOcupado = true;
+            
+            
+            // Espera especial en Cisneros (5 segundos)
+            long startTime = System.currentTimeMillis();
+            while (System.currentTimeMillis() - startTime < 5000) {
+                try { Thread.sleep(100); } catch (InterruptedException e) { break; }
+            }
+            
+            // Movimiento de salida de Cisneros
+            turnLeft();
+            turnLeft();
+            moveCheckBeeper();
+            
+        } finally {
+            cisnerosOcupado = false;
+            
+            cisnerosLock.unlock();
+        }
+    }
+
+    private void desde14_15hasta16_2() {
+        // 14,15 -> 14,12
+        for (int i = 0; i < 3; i++) moveCheckBeeper();
+        
+        // 14,12 -> 14,9
+        for (int i = 0; i < 3; i++) moveCheckBeeper();
+        
+        // 14,9 -> 15,5
+        turnRight();
+        moveCheckBeeper();
+        turnLeft();
+        for (int i = 0; i < 4; i++) moveCheckBeeper();
+        
+        // 15,5 -> 16,2
+        turnRight();
+        for (int i = 0; i < 2; i++) moveCheckBeeper();
+        turnLeft();
+        moveCheckBeeper();
+    }
+
+    private void desde16_2hasta16_1() {
+        // 16,2 -> 16,1
+        turnLeft();
+        moveCheckBeeper();
+        turnLeft();
+        moveCheckBeeper();
+    }
 }
+
 
 class RacerC extends Racer {
 
