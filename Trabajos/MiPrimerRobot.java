@@ -433,12 +433,22 @@ class Racer extends Robot implements Runnable {
 }
 
 class RacerB extends Racer {
+    // Bloqueo específico para la estación en coordenadas (14,15)
+    private static final ReentrantLock stationLock = new ReentrantLock();
+    private static boolean stationOccupied = false;
+    
+    // El bloqueo Cisneros modificado - definimos coordenadas específicas
     private static final ReentrantLock cisnerosLock = new ReentrantLock();
     private static boolean cisnerosOcupado = false;
+    // Definir las coordenadas exactas de la estación Cisneros
+    private static final int CISNEROS_AVENUE = 13; // Ajusta según el mapa
+    private static final int CISNEROS_STREET = 20; // Ajusta según el mapa
+    
     private static final Set<Integer> primeraSalida = Collections.synchronizedSet(new HashSet<>());
 
     public RacerB(int trainId, int street, int avenue, Direction direction, int beeps, Color color) {
         super(trainId, street, avenue, direction, beeps, color);
+        this.trainId = trainId;
     }
 
     private void InitializeRouteB() {
@@ -451,7 +461,7 @@ class RacerB extends Racer {
             turnRight(); move(); move();
             turnLeft();
         }
-        System.out.println("Tren llegó al punto de partida: Calle " + getStreet() + ", Avenida " + getAvenue());
+        System.out.println("Tren " + getTrainId() + " llegó al punto de partida: Calle " + getStreet() + ", Avenida " + getAvenue());
         moveToSanJavier();
     }
 
@@ -519,7 +529,160 @@ class RacerB extends Racer {
         turnLeft(); 
         super.move();
         
-        System.out.println("Llegué a San Javier");
+        System.out.println("Tren " + getTrainId() + " llegó a San Javier");
+    }
+    
+    // Método para verificar la posición actual y tomar acciones según las coordenadas
+    private void checkPosition() {
+        // Verificar si estamos en la posición (14,15)
+        if (getAvenue() == 14 && getStreet() == 15) {
+            enterStation();
+        }
+        // Verificar si estamos saliendo de la posición (14,15)
+        else if (isLeavingStation()) {
+            leaveStation();
+        }
+        // Verificar si estamos en la posición (13,12) que debe esperar
+        else if (getAvenue() == 13 && getStreet() == 12) {
+            waitForStationToBeEmpty();
+        }
+        // Verificar si estamos en la estación Cisneros
+        else if (getAvenue() == CISNEROS_AVENUE && getStreet() == CISNEROS_STREET) {
+            enterCisneros();
+        }
+        // Verificar si estamos saliendo de Cisneros
+        else if (isLeavingCisneros()) {
+            leaveCisneros();
+        }
+    }
+    
+    // Método para determinar si el tren está saliendo de la estación
+    private boolean isLeavingStation() {
+        // Aquí debes implementar la lógica para detectar cuando el tren
+        // está saliendo de la estación en (14,15)
+        // Esta es una implementación básica, ajusta según tu lógica de movimiento
+        if ((getAvenue() == 15 && getStreet() == 15) || 
+            (getAvenue() == 14 && getStreet() == 16)) {
+            return stationOccupied && isMyTrainInStation();
+        }
+        return false;
+    }
+    
+    // Método para determinar si el tren está saliendo de Cisneros
+    private boolean isLeavingCisneros() {
+        // Define las coordenadas que corresponden a salir de Cisneros
+        // Ajusta según tu mapa y lógica de movimiento
+        if ((getAvenue() == CISNEROS_AVENUE + 1 && getStreet() == CISNEROS_STREET) || 
+            (getAvenue() == CISNEROS_AVENUE && getStreet() == CISNEROS_STREET + 1) ||
+            (getAvenue() == CISNEROS_AVENUE - 1 && getStreet() == CISNEROS_STREET) ||
+            (getAvenue() == CISNEROS_AVENUE && getStreet() == CISNEROS_STREET - 1)) {
+            return cisnerosOcupado && isMyTrainInCisneros();
+        }
+        return false;
+    }
+    
+    // Variables para rastrear si este tren está actualmente en la estación
+    private boolean inStation = false;
+    private boolean inCisneros = false;
+    
+    // Método para verificar si este tren está en la estación
+    private boolean isMyTrainInStation() {
+        return inStation;
+    }
+    
+    // Método para verificar si este tren está en Cisneros
+    private boolean isMyTrainInCisneros() {
+        return inCisneros;
+    }
+    
+    // Método para entrar a la estación en (14,15)
+    private void enterStation() {
+        stationLock.lock();
+        try {
+            // Marcar la estación como ocupada
+            stationOccupied = true;
+            inStation = true;
+            System.out.println("Tren " + getTrainId() + " entró a la estación en (14,15)");
+            
+            // Espera de 2 segundos en la estación (simulando tiempo de parada)
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        } finally {
+            // No liberamos el lock aquí, lo haremos al salir de la estación
+        }
+    }
+    
+    // Método para entrar a Cisneros
+    private void enterCisneros() {
+        cisnerosLock.lock();
+        try {
+            // Marcar Cisneros como ocupado
+            cisnerosOcupado = true;
+            inCisneros = true;
+            System.out.println("Tren " + getTrainId() + " entró a Cisneros en (" + 
+                               CISNEROS_AVENUE + "," + CISNEROS_STREET + ")");
+            
+            // Espera de 5 segundos en Cisneros (simulando tiempo de parada)
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        } finally {
+            // No liberamos el lock aquí, lo haremos al salir de Cisneros
+        }
+    }
+    
+    // Método para salir de la estación
+    private void leaveStation() {
+        if (inStation) {
+            try {
+                inStation = false;
+                stationOccupied = false;
+                System.out.println("Tren " + getTrainId() + " salió de la estación en (14,15)");
+            } finally {
+                stationLock.unlock();
+            }
+        }
+    }
+    
+    // Método para salir de Cisneros
+    private void leaveCisneros() {
+        if (inCisneros) {
+            try {
+                inCisneros = false;
+                cisnerosOcupado = false;
+                System.out.println("Tren " + getTrainId() + " salió de Cisneros");
+            } finally {
+                cisnerosLock.unlock();
+            }
+        }
+    }
+    
+    // Método para esperar a que la estación se desocupe
+    private void waitForStationToBeEmpty() {
+        System.out.println("Tren " + getTrainId() + " esperando en (13,12) a que se desocupe la estación");
+        
+        // Esperar a que la estación se desocupe
+        while (stationOccupied) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        
+        System.out.println("Tren " + getTrainId() + " continúa desde (13,12)");
+    }
+
+    // Sobrescribir el método move para verificar la posición en cada movimiento
+    @Override
+    public void move() {
+        super.move();
+        checkPosition();
     }
 
     public void SanJavier_SanAntonio() {
@@ -529,49 +692,25 @@ class RacerB extends Racer {
         moveCheckBeeper();
         moveCheckBeeper();
         moveCheckBeeper();
+        moveCheckBeeper();
+        moveCheckBeeper();
         turnRight();
         moveCheckBeeper();
         turnLeft();
-        for(int i = 0; i < 7; i++) {
-            moveCheckBeeper();
-        }
-        turnRight();
-        moveCheckBeeper();
-        moveCheckBeeper();
-        moveCheckBeeper();
-        turnLeft();
-        for(int i = 0; i < 10; i++) {
+        for(int i = 0; i < 9; i++) {
             moveCheckBeeper();
         }
         turnLeft();
-        for(int i = 0; i < 6; i++) {
-            moveCheckBeeper();
-        }
-        turnRight();
-        moveCheckBeeper();
-        moveCheckBeeper();
         moveCheckBeeper();
         turnRight();
         moveCheckBeeper();
-        moveCheckBeeper();
-        turnLeft();
-        moveCheckBeeper();
-        moveCheckBeeper();
-        moveCheckBeeper();
-        turnRight();
-        moveCheckBeeper();
-        moveCheckBeeper();
-        turnLeft();
-        moveCheckBeeper();
-        moveCheckBeeper();
-        moveCheckBeeper();
-        turnRight();
-        moveCheckBeeper(); 
+        
+        System.out.println("Tren " + getTrainId() + " llegó a San Antonio");
     }
 
     public void SanAntonio_SanJavier() {
-        // Condición especial en Cisneros (antes de regresar)
-        manejarCisneros();
+        // Ya no necesitamos manejar Cisneros explícitamente, 
+        // ahora se maneja con el método checkPosition()
         
         turnLeft();
         turnLeft();
@@ -605,30 +744,21 @@ class RacerB extends Racer {
         moveCheckBeeper();
         turnLeft();
         moveCheckBeeper();
+        turnRight();
+        moveCheckBeeper();
+        
+        System.out.println("Tren " + getTrainId() + " regresó a San Javier");
     }
 
-    private void manejarCisneros() {
-        cisnerosLock.lock();
-        try {
-            // Esperar si Cisneros está ocupado
-            while (cisnerosOcupado) {
-                try { Thread.sleep(100); } catch (InterruptedException e) { e.printStackTrace(); }
-            }
-            
-            cisnerosOcupado = true;
-            
-            
-            // Espera especial en Cisneros (5 segundos)
-            long startTime = System.currentTimeMillis();
-            while (System.currentTimeMillis() - startTime < 5000) {
-                try { Thread.sleep(100); } catch (InterruptedException e) { break; }
-            }
-            
-        } finally {
-            cisnerosOcupado = false;
-            
-            cisnerosLock.unlock();
-        }
+    // El antiguo método manejarCisneros ya no es necesario ya que
+    // ahora se maneja con enterCisneros() y leaveCisneros()
+
+    // Variable para almacenar el ID del tren
+    private int trainId;
+    
+    // Método para obtener el ID del tren 
+    private int getTrainId() {
+        return this.trainId;
     }
 
     @Override
@@ -637,7 +767,11 @@ class RacerB extends Racer {
 
         // Esperar señal de inicio
         while (!MiPrimerRobot.startSignal.get()) {
-            try { Thread.sleep(100); } catch (InterruptedException e) { e.printStackTrace(); }
+            try { 
+                Thread.sleep(100); 
+            } catch (InterruptedException e) { 
+                e.printStackTrace(); 
+            }
         }
 
         // Recorrido continuo
