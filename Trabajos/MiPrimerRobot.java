@@ -555,6 +555,20 @@ class RacerB extends Racer {
             leaveCisneros();
         }
     }
+
+    private void waitBeforeLeavingToStation() {
+    if (getAvenue() == 13 && getStreet() == 12) {
+        System.out.println("Tren " + getTrainId() + " en (13,12) esperando que (14,15) esté libre para avanzar.");
+        while (stationOccupied) {
+            try {
+                Thread.sleep(100); // Esperar un poco antes de verificar de nuevo
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        System.out.println("Tren " + getTrainId() + " puede avanzar desde (13,12) hacia (14,15)");
+    }
+    }
     
     // Método para determinar si el tren está saliendo de la estación
     private boolean isLeavingStation() {
@@ -681,6 +695,8 @@ class RacerB extends Racer {
     // Sobrescribir el método move para verificar la posición en cada movimiento
     @Override
     public void move() {
+        waitBeforeLeavingToStation();
+
         super.move();
         checkPosition();
     }
