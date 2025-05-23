@@ -566,10 +566,6 @@ class Racer extends Robot implements Runnable {
             move();
         }
         turnRight();
-        for (int i = 0; i < 3; i++) {
-            move();
-        }
-        turnRight();
         for (int i = 0; i < 2; i++) {
             move();
         }
@@ -588,7 +584,7 @@ class Racer extends Robot implements Runnable {
         turnRight();
         move();
         turnLeft();
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 5; i++) {
             move();
         }
         turnLeft();
@@ -612,8 +608,64 @@ class Racer extends Robot implements Runnable {
         turnRight();
         move();
         move();
-    } else {
-       
+    } 
+    if (getStreet() == 14 && getAvenue() == 15) {
+        for (int i = 0; i < 4; i++) {
+            move();
+        }
+        turnRight(); 
+        for (int i = 0; i < 4; i++) {
+            move();
+        }
+        turnRight();
+        move();
+        turnLeft();
+        for (int i = 0; i < 4; i++) {
+            move();
+        }
+        turnRight();
+        for (int i = 0; i < 2; i++) {
+            move();
+        }
+        turnLeft();
+        for (int i = 0; i < 3; i++) {
+            move();
+        }
+        turnRight();
+        for (int i = 0; i < 2; i++) {
+            move();
+        }
+        turnLeft();
+        for (int i = 0; i < 3; i++) {
+            move();
+        }
+        turnRight();
+        move();
+        turnLeft();
+        for (int i = 0; i < 5; i++) {
+            move();
+        }
+        turnLeft();
+        for (int i = 0; i < 2; i++) {
+            move();
+        }
+        turnRight();
+        for (int i = 0; i < 2; i++) {
+            move();
+        }
+        turnLeft();
+        for (int i = 0; i < 14; i++) {
+            move();
+        }
+        turnLeft();
+        move();
+        turnLeft();
+        for (int i = 0; i < 13; i++) {
+            move();
+        }
+        turnRight();
+        move();
+        move();
     }
 } 
 }
