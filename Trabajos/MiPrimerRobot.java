@@ -12,14 +12,11 @@ import java.util.Set;
 import java.util.HashSet;
 import java.util.Collections;
 
-
-
 class TrainControl {
 
     // Matriz de 36 x 22 representando las calles y las avenidas del mundo
     private static int[][] occupation = new int[37][22]; //1-37 - 1-22
 
-     
     // Matriz de estaciones (beeper positions)
     private static final int[][] ESTACIONES = {
         {35,19}, {34,19}, {31,16}, {31,17}, {27,15}, {27,16}, 
@@ -44,10 +41,9 @@ class TrainControl {
     // Reservar una posición del metro para evitar choques
     public static boolean reservePosition(int trainId, int street, int avenue) {
         if (!isValidPosition(street, avenue)) {
-            System.out.println("Posición fuera de límites: (" + street + "," + avenue + ")");
+           
             return false;
         }
-        
         lock.lock(); // Inicio seccion critica 
         try {
             if (occupation[street][avenue] == 0) {
@@ -65,7 +61,6 @@ class TrainControl {
         if (!isValidPosition(street, avenue)) {
             return;
         }
-        
         lock.lock(); // Inicio Seccion critica 
         try {
             occupation[street][avenue] = 0; 
@@ -79,7 +74,6 @@ class TrainControl {
         if (!isValidPosition(street, avenue)) {
             return true; // Considerar posiciones inválidas como ocupadas
         }
-        
         lock.lock();
         try {
             return occupation[street][avenue] != 0;
@@ -91,8 +85,8 @@ class TrainControl {
     private static boolean isValidPosition(int street, int avenue) {
         return street >= 1 && street <= 36 && avenue >= 1 && avenue <= 22;
     }
-
 }
+
 // Clase base Racer
 class Racer extends Robot implements Runnable {
     protected int currentStreet;
@@ -106,7 +100,6 @@ class Racer extends Robot implements Runnable {
         this.currentStreet = street;
         this.currentAvenue = avenue;
         World.setupThread(this);
-        
         // Reservar la posición inicial
         while (!TrainControl.reservePosition(trainId, currentStreet, currentAvenue)) {
             try { Thread.sleep(50); } catch (InterruptedException e) { e.printStackTrace(); }
@@ -124,39 +117,27 @@ class Racer extends Robot implements Runnable {
     @Override
     public void move() {
         if (!frontIsClear()) {
-            
             return;
         }
-        
         // Calcular próxima posición
         int nextStreet = currentStreet;
         int nextAvenue = currentAvenue;
-        
         if (facingNorth()) nextStreet++;
         else if (facingSouth()) nextStreet--;
         else if (facingEast()) nextAvenue++;
         else if (facingWest()) nextAvenue--;
-
         // Esperar hasta que la posición esté disponible
         while (!TrainControl.reservePosition(trainId, nextStreet, nextAvenue)) {
             try { Thread.sleep(50); } catch (InterruptedException e) { e.printStackTrace(); }
         }
-
-        
         // Liberar posición actual
         TrainControl.freePosition(currentStreet, currentAvenue);
-        
         // Mover físicamente
         super.move();
-        
         // Actualizar posición
         currentStreet = nextStreet;
         currentAvenue = nextAvenue;
-        
-       
     }
-
-    // Resto de métodos (turnRight, run, etc.) permanecen iguales
 
     public void turnRight() {
         turnLeft(); 
@@ -164,90 +145,64 @@ class Racer extends Robot implements Runnable {
         turnLeft();
     }
 
-     public void moveCheckBeeper() {
+    public void moveCheckBeeper() {
         if (!frontIsClear()) {
-        
-        return;
-    }
-
-    // Calcular próxima posición
-    int nextStreet = currentStreet;
-    int nextAvenue = currentAvenue;
-    
-    if (facingNorth()) nextStreet++;
-    else if (facingSouth()) nextStreet--;
-    else if (facingEast()) nextAvenue++;
-    else if (facingWest()) nextAvenue--;
-
-    // Esperar hasta que la posición esté disponible
-    while (!TrainControl.reservePosition(trainId, nextStreet, nextAvenue)) {
-        try { Thread.sleep(50); } catch (InterruptedException e) { e.printStackTrace(); }
-    }
-
-    // ANTES de moverse: verificar si la posición actual es estación
-    if (nextToABeeper() && TrainControl.isStation(currentStreet, currentAvenue)) {
-       
-        long startTime = System.currentTimeMillis();
-        while (System.currentTimeMillis() - startTime < 3000) {
-            try { Thread.sleep(100); } catch (InterruptedException e) { break; }
+            return;
         }
+        int nextStreet = currentStreet;
+        int nextAvenue = currentAvenue;
+        if (facingNorth()) nextStreet++;
+        else if (facingSouth()) nextStreet--;
+        else if (facingEast()) nextAvenue++;
+        else if (facingWest()) nextAvenue--;
+        while (!TrainControl.reservePosition(trainId, nextStreet, nextAvenue)) {
+            try { Thread.sleep(50); } catch (InterruptedException e) { e.printStackTrace(); }
+        }
+        if (nextToABeeper() && TrainControl.isStation(currentStreet, currentAvenue)) {
+            long startTime = System.currentTimeMillis();
+            while (System.currentTimeMillis() - startTime < 3000) {
+                try { Thread.sleep(100); } catch (InterruptedException e) { break; }
+            }
+        }
+        TrainControl.freePosition(currentStreet, currentAvenue);
+        super.move();
+        currentStreet = nextStreet;
+        currentAvenue = nextAvenue;
         
     }
-
-    // Liberar posición actual
-    TrainControl.freePosition(currentStreet, currentAvenue);
-    
-    // Movimiento físico
-    super.move();
-    
-    // Actualizar posición interna
-    currentStreet = nextStreet;
-    currentAvenue = nextAvenue;
-    
-    System.out.println("Tren " + trainId + " en (" + currentStreet + "," + currentAvenue + ")");
-}
-    
 
     private void InitializeRoute() {
-    // Verificar si el tren ya está en el punto de partida
-    if (getStreet() == 33 && getAvenue() == 14) {
-        move();
+        if (getStreet() == 33 && getAvenue() == 14) {
+            move();
+            turnLeft();
+            
+            goToNiquia();
+            return;
+        }
+        if (getStreet() == 34 && getAvenue() == 14) {
+            move();
+            move();
+            turnLeft();
+           
+            goToNiquia();
+            return;
+        }
+        if (getStreet() == 32 && getAvenue() == 14) {
+            goToNiquia();
+            return;
+        }
+        while (getAvenue() < 14) {
+            move();
+            System.out.println("While 1");
+        }
+        turnRight();
+        for (int i = 0; i < 2; i++) {
+            move();
+        }
         turnLeft();
         System.out.println("Tren llegó al punto de partida: Calle " + getStreet() + ", Avenida " + getAvenue());
         goToNiquia();
-        return;
     }
-
-    if (getStreet() == 34 && getAvenue() == 14) {
-        move();
-        move();
-        turnLeft();
-        System.out.println("Tren llegó al punto de partida: Calle " + getStreet() + ", Avenida " + getAvenue());
-        goToNiquia();
-        return;
-    }
-
-    if (getStreet() == 32 && getAvenue() == 14) {
-        goToNiquia();
-        return;
-    }
-
-    // Si no está en el punto de partida, moverse hacia la avenida 14
-    while (getAvenue() < 14) {
-        move();
-        System.out.println("While 1");
-    }
-
-    turnRight();
-
-    for (int i = 0; i < 2; i++) {
-        move();
-    }
-
-    turnLeft();
-    System.out.println("Tren llegó al punto de partida: Calle " + getStreet() + ", Avenida " + getAvenue());
-    goToNiquia();
-}
 
     public void goToNiquia() {
         move(); 
@@ -269,169 +224,399 @@ class Racer extends Robot implements Runnable {
 
     public void Niquia_Estrella(){
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         turnLeft();
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         for (int i = 0; i < 3; i++) {
-                moveCheckBeeper(); 
-            }
-
-            turnRight();
-            for (int i = 0; i < 1; i++) {
-                moveCheckBeeper();
-            }
-
-            turnLeft(); 
-            for (int i = 0; i < 3; i++) {
-                moveCheckBeeper();
-            }
-
-            turnRight();
-            for (int i = 0; i < 2; i++) {
-                moveCheckBeeper(); 
-            }
-
-            turnLeft();
-            for (int i = 0; i < 3; i++) {
-                moveCheckBeeper();
-            }
-
-            turnRight(); 
-            for (int i = 0; i < 2; i++) {
-                moveCheckBeeper(); 
-            }
-
-            turnLeft(); 
-            for (int i = 0; i < 5; i++) {
-                moveCheckBeeper();
-            }
-
-            turnLeft(); 
-            for (int i = 0; i < 5; i++) {
-                moveCheckBeeper();
-            }
-
-            turnRight();
-            for (int i = 0; i < 7; i++) {
-                moveCheckBeeper();
-            }
-
-            turnRight();
-            for (int i = 0; i < 3; i++) {
-                moveCheckBeeper();
-            }
-
-            turnLeft(); 
-            for (int i = 0; i < 6; i++) {
-                moveCheckBeeper();
-            }
-
-            turnRight();
-            moveCheckBeeper();
-
-            turnLeft(); 
-            for (int i = 0; i < 3; i++) {
-                moveCheckBeeper();
-            }
-
-            turnRight();
-            for (int i = 0; i < 2; i++) {
-                moveCheckBeeper();
-            }
-
-            turnLeft(); 
-            moveCheckBeeper();
-
-            turnLeft(); 
-            moveCheckBeeper();
-
-        System.out.println("¡Llegué a La Estrella!");
-        
-        
-
- }
-
-    public void Estrella_Niquia(){
-
-        moveCheckBeeper();
-        moveCheckBeeper();
-        turnLeft();
-        moveCheckBeeper();
-        moveCheckBeeper();
-        moveCheckBeeper();
+            moveCheckBeeper(); 
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        }
         turnRight();
-        moveCheckBeeper();
-        turnLeft();
-        for(int i = 0; i < 7; i++) {
+        for (int i = 0; i < 1; i++) {
             moveCheckBeeper();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        }
+        turnLeft(); 
+        for (int i = 0; i < 3; i++) {
+            moveCheckBeeper();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        }
+        turnRight();
+        for (int i = 0; i < 2; i++) {
+            moveCheckBeeper(); 
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        }
+        turnLeft();
+        for (int i = 0; i < 3; i++) {
+            moveCheckBeeper();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        }
+        turnRight(); 
+        for (int i = 0; i < 2; i++) {
+            moveCheckBeeper(); 
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        }
+        turnLeft(); 
+        for (int i = 0; i < 5; i++) {
+            moveCheckBeeper();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        }
+        turnLeft(); 
+        for (int i = 0; i < 5; i++) {
+            moveCheckBeeper();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        }
+        turnRight();
+        for (int i = 0; i < 7; i++) {
+            moveCheckBeeper();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        }
+        turnRight();
+        for (int i = 0; i < 3; i++) {
+            moveCheckBeeper();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        }
+        turnLeft(); 
+        for (int i = 0; i < 6; i++) {
+            moveCheckBeeper();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         }
         turnRight();
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        turnLeft(); 
+        for (int i = 0; i < 3; i++) {
+            moveCheckBeeper();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        }
+        turnRight();
+        for (int i = 0; i < 2; i++) {
+            moveCheckBeeper();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        }
+        turnLeft(); 
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        turnLeft(); 
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        System.out.println("¡Llegué a La Estrella!");
+    }
+
+    public void Estrella_Niquia(){
+        moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        turnLeft();
+        moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        turnRight();
+        moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        turnLeft();
+        for(int i = 0; i < 7; i++) {
+            moveCheckBeeper();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        }
+        turnRight();
+        moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         turnLeft();
         for(int i = 0; i < 10; i++) {
             moveCheckBeeper();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         }
         turnLeft();
         for(int i = 0; i < 6; i++) {
             moveCheckBeeper();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         }
         turnRight();
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         turnRight();
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         turnLeft();
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         turnRight();
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         turnLeft();
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         turnRight();
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         turnLeft();
         for(int i = 0; i < 7; i++) {
             moveCheckBeeper();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         }
         turnRight();
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         turnLeft();
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         turnLeft();
         moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         System.out.println("¡Llegué a Niquía!");
+    }
 
+    // --- Cambios para parada en estación extrema ---
+    private boolean enEstacionExtrema() {
+        return (getStreet() == 35 && getAvenue() == 19) || (getStreet() == 1 && getAvenue() == 11);
     }
 
     @Override
     public void run() {
         InitializeRoute();
-
         while (!MiPrimerRobot.startSignal.get()) {
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
-        Niquia_Estrella();
-        Estrella_Niquia();
-    }
-}
+        }
+        // Bucle infinito de rutas, pero si se pide detener, termina en estación extrema
+        while (true) {
+            Niquia_Estrella();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) break;
+            Estrella_Niquia();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) break;
+        }
 
+        while (!MiPrimerRobot.goToTaller.get()) {
+            try {  
+                Thread.sleep(100); 
+            } catch (InterruptedException e) { 
+                e.printStackTrace(); 
+            }
+        }
+        irAlTaller();
+    }
+
+    public void irAlTaller() {
+    
+    if (getStreet() == 35 && getAvenue() == 19) {
+        for (int i = 0; i < 3; i++) {
+            move();
+        }
+        turnLeft(); 
+        for (int i = 0; i < 2; i++) {
+            move();
+        }
+        turnRight();
+        move();
+        turnRight();
+        for (int i = 0; i < 2; i++) {
+            move();
+        }
+        turnLeft();
+        for (int i = 0; i < 14; i++) {
+            move();
+        }
+        turnLeft();
+        move();
+        turnLeft();
+        for (int i = 0; i < 13; i++) {
+            move();
+        }
+        turnRight();
+        move();
+        move();
+    }
+    if (getStreet() == 1 && getAvenue() == 11) {
+        for (int i = 0; i < 2; i++) {
+            move();
+        }
+        turnLeft(); 
+        for (int i = 0; i < 3; i++) {
+            move();
+        }
+        turnRight();
+        move();
+        turnLeft();
+        for (int i = 0; i < 6; i++) {
+            move();
+        }
+        turnRight();
+        for (int i = 0; i < 3; i++) {
+            move();
+        }
+        turnLeft();
+        for (int i = 0; i < 9; i++) {
+            move();
+        }
+        turnLeft();
+        for (int i = 0; i < 5; i++) {
+            move();
+        }
+        turnRight();
+        for (int i = 0; i < 3; i++) {
+            move();
+        }
+        turnRight();
+        for (int i = 0; i < 2; i++) {
+            move();
+        }
+        turnLeft();
+        for (int i = 0; i < 3; i++) {
+            move();
+        }
+        turnRight();
+        for (int i = 0; i < 2; i++) {
+            move();
+        }
+        turnLeft();
+        for (int i = 0; i < 3; i++) {
+            move();
+        }
+        turnRight();
+        move();
+        turnLeft();
+        for (int i = 0; i < 5; i++) {
+            move();
+        }
+        turnLeft();
+        for (int i = 0; i < 2; i++) {
+            move();
+        }
+        turnRight();
+        for (int i = 0; i < 2; i++) {
+            move();
+        }
+        turnLeft();
+        for (int i = 0; i < 14; i++) {
+            move();
+        }
+        turnLeft();
+        move();
+        turnLeft();
+        for (int i = 0; i < 13; i++) {
+            move();
+        }
+        turnRight();
+        move();
+        move();
+    }
+    if (getStreet() == 16 && getAvenue() == 1) {
+        for (int i = 0; i < 2; i++) {
+            move();
+        }
+        turnLeft(); 
+        for (int i = 0; i < 5; i++) {
+            move();
+        }
+        turnRight();
+        move();
+        turnLeft();
+        for (int i = 0; i < 5; i++) {
+            move();
+        }
+        turnLeft();
+        for (int i = 0; i < 5; i++) {
+            move();
+        }
+        turnRight();
+        move();
+        turnLeft();
+        for (int i = 0; i < 4; i++) {
+            move();
+        }
+        turnRight();
+        for (int i = 0; i < 3; i++) {
+            move();
+        }
+        turnRight();
+        for (int i = 0; i < 2; i++) {
+            move();
+        }
+        turnLeft();
+        for (int i = 0; i < 3; i++) {
+            move();
+        }
+        turnRight();
+        for (int i = 0; i < 2; i++) {
+            move();
+        }
+        turnLeft();
+        for (int i = 0; i < 3; i++) {
+            move();
+        }
+        turnRight();
+        move();
+        turnLeft();
+        for (int i = 0; i < 4; i++) {
+            move();
+        }
+        turnLeft();
+        for (int i = 0; i < 2; i++) {
+            move();
+        }
+        turnRight();
+        for (int i = 0; i < 2; i++) {
+            move();
+        }
+        turnLeft();
+        for (int i = 0; i < 14; i++) {
+            move();
+        }
+        turnLeft();
+        move();
+        turnLeft();
+        for (int i = 0; i < 13; i++) {
+            move();
+        }
+        turnRight();
+        move();
+        move();
+    } else {
+       
+    }
+} 
+}
 class RacerB extends Racer {
     // Shared control for station access
     private static final Object stationLock = new Object();
@@ -446,11 +631,15 @@ class RacerB extends Racer {
         this.trainId = trainId;
     }
 
+    // --- Cambios para parada en estación extrema ---
+    private boolean enEstacionExtrema() {
+        // San Javier: (16,1), San Antonio: (14,15)
+        return (getStreet() == 16 && getAvenue() == 1) || (getStreet() == 14 && getAvenue() == 15);
+    }
+
     @Override
     public void run() {
         initialize();
-
-        // Wait for start signal
         while (!MiPrimerRobot.startSignal.get()) {
             try {
                 Thread.sleep(100);
@@ -458,31 +647,36 @@ class RacerB extends Racer {
                 e.printStackTrace();
             }
         }
-
-        // Continuous route
+        // Bucle infinito de rutas, pero si se pide detener, termina en estación extrema
         while (true) {
             sanJavierToSanAntonio();
-            sanAntonioToSanJavier();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) break;
+           sanAntonioToSanJavier();
+           if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) break;
         }
+
+        while (!MiPrimerRobot.goToTaller.get()) {
+            try { 
+                Thread.sleep(100);
+            } catch (InterruptedException e) { 
+                e.printStackTrace(); 
+            }  
+        }
+        irAlTaller();
     }
 
     private void initialize() {
-        // Initial positioning depending on start location
         if (getStreet() == 35 && getAvenue() == 1) {
             move();
             turnLeft();
         }
-        
-        // Move to avenue 14
         while (getAvenue() < 14) move();
-        
         if (getAvenue() == 14) {
             turnRight();
             move(); move();
             turnLeft();
         }
-        
-        System.out.println("Tren " + trainId + " llegó al punto de partida: Calle " + getStreet() + ", Avenida " + getAvenue());
+       
         moveToSanJavier();
     }
 
@@ -517,64 +711,73 @@ class RacerB extends Racer {
             int currentAvenue = getAvenue();
 
                 moveCheckBeeper();
+                if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
             moveCheckBeeper();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
             turnLeft();
             for(int i = 0; i < 6; i++) {
                 moveCheckBeeper();
+                if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
             }
             turnRight();
             moveCheckBeeper();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
             turnLeft();
             for(int i = 0; i < 7; i++) {
                 moveCheckBeeper();
+                if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+                
             }
 
             
-            // Handle special Cisneros → San Antonio B case (requires synchronization)
-            if (currentStreet == 13 && currentAvenue == 12) {
-                // We're at Cisneros station, waiting to enter San Antonio B
-                synchronized (stationLock) {
-                    // Wait until San Antonio B is free
-                    while (sanAntonioBOcupada) {
-                        try {
-                            System.out.println("Tren " + trainId + " esperando en Cisneros porque San Antonio B está ocupada");
-                            stationLock.wait();
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                    
-                    // Mark Cisneros as occupied during transition
-                    cisnerosOcupada = true;
-                    System.out.println("Tren " + trainId + " en tránsito Cisneros → San Antonio B");
-                }
-                
-                // Move from Cisneros to San Antonio B
-                move();
-                move();       // South to (14,12)
-                turnLeft();   // Face East
-                move();       // East to (14,13)
-                turnRight();
-                move();       // East to (14,15) - San Antonio B
-                
-                // Mark arrival at San Antonio B
-                synchronized (stationLock) {
-                    sanAntonioBOcupada = true;
-                    cisnerosOcupada = false;  // Release Cisneros after transition
-                    stationLock.notifyAll();  // Notify any waiting trains
-                    System.out.println("Tren " + trainId + " ha llegado a San Antonio B, Cisneros liberada");
-                }
-                
-                // Short stop at station
+            
+            
+    if (currentStreet == 13 && currentAvenue == 12) {
+        // Esperar en Cisneros si San Antonio B está ocupada o si hay tren en (14,13)
+        synchronized (stationLock) {
+            while (sanAntonioBOcupada || TrainControl.isPositionOccupied(14, 13)) {
                 try {
-                    Thread.sleep(1500);
+                    System.out.println("Tren " + trainId + " esperando en Cisneros porque San Antonio B está ocupada o hay tren en (14,13)");
+                    stationLock.wait();
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-                
-                estacionActual++;
-                continue;
             }
+            // Marcar transición
+            cisnerosOcupada = true;
+            System.out.println("Tren " + trainId + " en tránsito Cisneros → San Antonio B");
+            // Marcar San Antonio B como ocupada ANTES de salir de Cisneros
+            sanAntonioBOcupada = true;
+                // Ahora sí, salir de Cisneros y entrar a San Antonio B
+            
+        }
+            move(); // (14,12)
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+            turnLeft();   // Face East
+            move();  // (14,13)
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+            turnRight();
+            move(); // (14,15) - San Antonio B
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+
+        
+
+        // Liberar Cisneros después de salir
+        synchronized (stationLock) {
+            cisnerosOcupada = false;
+            stationLock.notifyAll();
+        }
+
+        // Parada corta en San Antonio B
+        try {
+            Thread.sleep(1500);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        estacionActual++;
+        continue;
+}
             
             // At San Antonio B, moving toward San Antonio
             if (currentStreet == 14 && currentAvenue == 15) {
@@ -583,46 +786,75 @@ class RacerB extends Racer {
                 
                 // Release San Antonio B before leaving
                 synchronized (stationLock) {
+                    
                     sanAntonioBOcupada = false;
                     stationLock.notifyAll();
                     System.out.println("Tren " + trainId + " ha liberado San Antonio B");
                 }
-                sanAntonioToSanJavier();
+               // sanAntonioToSanJavier();
                 return; // Exit the method after returning
             }
             estacionActual++;
         }
     }
     
-    public void sanAntonioToSanJavier() {
-        System.out.println("Tren " + trainId + " iniciando ruta San Antonio → San Javier");
+        public void sanAntonioToSanJavier() {
+        System.out.println("Tren " + trainId + " iniciando ruta San Antonio → San Javier desde (" + getStreet() + "," + getAvenue() + ")");
         
-        for(int i = 0; i < 9; i++) {
-            moveCheckBeeper();
-        }
-        turnRight();
-        moveCheckBeeper();
-        turnLeft();
-
-        
-        // Move back through main corridor
-        for(int i = 0; i < 6; i++) {
-            moveCheckBeeper();
+        // Liberar San Antonio B al salir
+        synchronized (stationLock) {
+            sanAntonioBOcupada = false;
+            stationLock.notifyAll();
+            System.out.println("Tren " + trainId + " ha liberado San Antonio B");
         }
         
-        turnRight();
-        moveCheckBeeper();
-        moveCheckBeeper();
-        turnLeft();
+        // Desde San Antonio B (14,15) hacia Cisneros (13,12)
+        turnLeft(); // Girar hacia el Norte si no está ya orientado
+        turnLeft(); // Ahora mirando hacia el Oeste
         
-        moveCheckBeeper();
+        // Ir hacia Cisneros
+        for(int i = 0; i < 3; i++) { // (14,14), (14,13), (14,12)
+            moveCheckBeeper();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        }
+        turnRight(); // Girar hacia el Norte
+        moveCheckBeeper(); // (13,12) - Cisneros
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         
-        turnLeft();
-
-        moveCheckBeeper();
+        // Desde Cisneros (13,12) hacia Floresta (13,9)
+        turnLeft(); // Girar hacia el Oeste
+        for(int i = 0; i < 3; i++) { // (13,11), (13,10), (13,9)
+            moveCheckBeeper();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        }
         
+        // Desde Floresta (13,9) hacia Santa Lucía (14,5)
+        for(int i = 0; i < 4; i++) { // (13,8), (13,7), (13,6), (13,5)
+            moveCheckBeeper();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        }
+        turnRight(); // Girar hacia el Sur
+        moveCheckBeeper(); // (14,5) - Santa Lucía
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         
-        System.out.println("Tren " + trainId + " ha completado regreso a San Javier");
+        // Desde Santa Lucía (14,5) hacia San Javier (16,1)
+        turnLeft(); // Girar hacia el Oeste
+        for(int i = 0; i < 2; i++) { // (14,4), (14,3)
+            moveCheckBeeper();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        }
+        turnRight(); // Girar hacia el Sur
+        for(int i = 0; i < 2; i++) { // (15,3), (16,3)
+            moveCheckBeeper();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        }
+        turnLeft(); // Girar hacia el Oeste
+        for(int i = 0; i < 2; i++) { // (16,2), (16,1)
+            moveCheckBeeper();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        }
+        
+        System.out.println("Tren " + trainId + " llegó a San Javier en (" + getStreet() + "," + getAvenue() + ")");
     }
     
     
@@ -695,25 +927,42 @@ class RacerB extends Racer {
     
 
 class RacerC extends Racer {
-
     public RacerC(int trainId, int street, int avenue, Direction direction, int beeps, Color color) {
-        super(trainId, street, avenue, direction, beeps, color); // Agregar trainId
+        super(trainId, street, avenue, direction, beeps, color);
+    }
+
+    // --- Cambios para parada en estación extrema ---
+    private boolean enEstacionExtrema() {
+        // Niquía: (32,14), La Estrella: (14,1)
+        return (getStreet() == 35 && getAvenue() == 19) || (getStreet() == 1 && getAvenue() == 11);
     }
 
     @Override
     public void run() {
         InitializeRouteC();
-         // Esperar la señal para comenzar el movimiento
         while (!MiPrimerRobot.startSignal.get()) {
             try {
-                Thread.sleep(100); // Esperar brevemente antes de verificar nuevamente
+                Thread.sleep(100);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
+        // Bucle infinito de rutas, pero si se pide detener, termina en estación extrema
+        while (true) {
+            Estrella_Niquia();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) break;
+            Niquia_Estrella();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) break;
+        }
 
-        Estrella_Niquia();
-        Niquia_Estrella();
+        while (!MiPrimerRobot.goToTaller.get()) {
+            try { 
+                Thread.sleep(100); 
+                } catch (InterruptedException e) { 
+                e.printStackTrace(); 
+                }
+        }
+        irAlTaller();
     }
 
     private void InitializeRouteC() {
@@ -738,7 +987,7 @@ class RacerC extends Racer {
         goToLaEstrella();
     }
 
-   public void goToLaEstrella() {
+    public void goToLaEstrella() {
         try {
             for (int i = 0; i < 2; i++) {
                 move();
@@ -801,7 +1050,6 @@ class RacerC extends Racer {
 
             turnRight();
             move(); 
-
             turnLeft(); 
             for (int i = 0; i < 3; i++) {
                 move(); 
@@ -814,10 +1062,8 @@ class RacerC extends Racer {
 
             turnLeft(); 
             move();
-
             turnLeft(); 
             move(); 
-
             System.out.println("¡Llegué a La Estrella!");
         } catch (Exception e) {
             e.printStackTrace();
@@ -828,7 +1074,9 @@ class RacerC extends Racer {
 // Clase principal
 public class MiPrimerRobot implements Directions {
 
-     public static final AtomicBoolean startSignal = new AtomicBoolean(false);
+    public static final AtomicBoolean startSignal = new AtomicBoolean(false);
+    public static final AtomicBoolean goToTaller = new AtomicBoolean(false);
+
     public static void main(String[] args) {
         World.readWorld("MetroMed.kwld");
         World.setVisible(true);
@@ -878,10 +1126,18 @@ public class MiPrimerRobot implements Directions {
             new Thread(r).start();
         }
 
-          // Esperar la entrada del usuario
+        // Esperar la entrada del usuario
         try {
-            System.in.read(); // Espera a que el usuario presione Enter
+            java.util.Scanner scanner = new java.util.Scanner(System.in);
+
+            scanner.nextLine(); // Espera a que el usuario presione Enter
             startSignal.set(true); // Enviar la señal para que los trenes comiencen a moverse
+
+            // --- Cambios para parada en estación extrema ---
+            System.out.println("Trenes en movimiento. Presiona Enter para detenerlos en la estación extrema más cercana.");
+            scanner.nextLine(); // Espera a que el usuario presione Enter (fin)
+            startSignal.set(false);
+            goToTaller.set(true); 
         } catch (Exception e) {
             e.printStackTrace();
         }
