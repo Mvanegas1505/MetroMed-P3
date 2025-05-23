@@ -1091,7 +1091,6 @@ class RacerC extends Racer {
 
 // Clase principal
 public class MiPrimerRobot implements Directions {
-
     public static final AtomicBoolean startSignal = new AtomicBoolean(false);
     public static final AtomicBoolean goToTaller = new AtomicBoolean(false);
 
@@ -1135,27 +1134,17 @@ public class MiPrimerRobot implements Directions {
             new RacerC(32,34, 15, North, 0, Color.BLUE),
         };
 
-        // Mostrar mensaje para esperar la entrada del usuario
-        System.out.println("Los trenes están posicionados en sus rutas respectivas.");
-        System.out.println("Presiona Enter cuando sean las 4:20 para iniciar el movimiento.");
-        
-        // Iniciar los trenes
         for (Racer r : trenes) {
             new Thread(r).start();
         }
 
-        // Esperar la entrada del usuario
         try {
             java.util.Scanner scanner = new java.util.Scanner(System.in);
-
-            scanner.nextLine(); // Espera a que el usuario presione Enter
-            startSignal.set(true); // Enviar la señal para que los trenes comiencen a moverse
-
-            // --- Cambios para parada en estación extrema ---
-            System.out.println("Trenes en movimiento. Presiona Enter para detenerlos en la estación extrema más cercana.");
-            scanner.nextLine(); // Espera a que el usuario presione Enter (fin)
+            scanner.nextLine();
+            startSignal.set(true);
+            scanner.nextLine();
             startSignal.set(false);
-            goToTaller.set(true); 
+            goToTaller.set(true);
         } catch (Exception e) {
             e.printStackTrace();
         }
