@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.Collections;
+import java.util.concurrent.ConcurrentHashMap;
 
 class TrainControl {
 
@@ -540,6 +541,88 @@ class Racer extends Robot implements Runnable {
         turnRight();
         move();
         move();
+    } 
+} 
+}
+
+class StationControl {
+    private static final Object stationLock = new Object();
+    private static volatile boolean sanAntonioBOcupada = false;
+    private static volatile boolean cisnerosOcupada = false;
+    private static volatile int currentTrainInSanAntonioB = -1;
+    private static volatile boolean isTrainLeavingSanAntonioB = false;
+    private static final Map<Integer, Boolean> trainDirections = new ConcurrentHashMap<>(); // true = hacia San Antonio, false = hacia San Javier
+    
+    public static void registerTrainDirection(int trainId, boolean towardsSanAntonio) {
+        trainDirections.put(trainId, towardsSanAntonio);
+    }
+    
+    public static void waitForSanAntonioB(int trainId, int currentStreet, int currentAvenue) throws InterruptedException {
+        synchronized (stationLock) {
+            while (sanAntonioBOcupada || isTrainLeavingSanAntonioB || 
+                   TrainControl.isPositionOccupied(14, 13) || 
+                   TrainControl.isPositionOccupied(14, 14)) {
+                System.out.println("Tren " + trainId + " esperando en Cisneros porque San Antonio B está ocupada o en proceso de liberación");
+                stationLock.wait();
+            }
+            
+            // Reservar San Antonio B y marcar como ocupada
+            sanAntonioBOcupada = true;
+            currentTrainInSanAntonioB = trainId;
+            System.out.println("Tren " + trainId + " ha reservado San Antonio B");
+        }
+    }
+    
+    public static void enterSanAntonioB(int trainId) {
+        synchronized (stationLock) {
+            cisnerosOcupada = false;
+            System.out.println("Tren " + trainId + " ha entrado a San Antonio B");
+            stationLock.notifyAll();
+        }
+    }
+    
+    public static void prepareLeaveSanAntonioB(int trainId) {
+        synchronized (stationLock) {
+            if (currentTrainInSanAntonioB == trainId) {
+                isTrainLeavingSanAntonioB = true;
+                System.out.println("Tren " + trainId + " preparándose para salir de San Antonio B");
+            }
+        }
+    }
+    
+    public static void completeLeaveSanAntonioB(int trainId) {
+        synchronized (stationLock) {
+            if (currentTrainInSanAntonioB == trainId) {
+                sanAntonioBOcupada = false;
+                isTrainLeavingSanAntonioB = false;
+                currentTrainInSanAntonioB = -1;
+                System.out.println("Tren " + trainId + " ha liberado completamente San Antonio B");
+                stationLock.notifyAll();
+            }
+        }
+    }
+}
+
+class RacerB extends Racer {
+    private final int trainId;
+    
+    public RacerB(int trainId, int street, int avenue, Direction direction, int beeps, Color color) {
+        super(trainId, street, avenue, direction, beeps, color);
+        this.trainId = trainId;
+        StationControl.registerTrainDirection(trainId, true);
+    }
+
+    public void irAlTallerB() {
+        if (getStreet() == 14 && getAvenue() == 15) {
+        turnLeft();
+        turnLeft();
+        StationControl.prepareLeaveSanAntonioB(this.trainId);
+        move();
+        move();
+        move();
+        StationControl.completeLeaveSanAntonioB(this.trainId);
+        sanAntonioToSanJavier();
+        
     }
     if (getStreet() == 16 && getAvenue() == 1) {
         for (int i = 0; i < 2; i++) {
@@ -608,79 +691,7 @@ class Racer extends Robot implements Runnable {
         turnRight();
         move();
         move();
-    } 
-    if (getStreet() == 14 && getAvenue() == 15) {
-        for (int i = 0; i < 4; i++) {
-            move();
-        }
-        turnRight(); 
-        for (int i = 0; i < 4; i++) {
-            move();
-        }
-        turnRight();
-        move();
-        turnLeft();
-        for (int i = 0; i < 4; i++) {
-            move();
-        }
-        turnRight();
-        for (int i = 0; i < 2; i++) {
-            move();
-        }
-        turnLeft();
-        for (int i = 0; i < 3; i++) {
-            move();
-        }
-        turnRight();
-        for (int i = 0; i < 2; i++) {
-            move();
-        }
-        turnLeft();
-        for (int i = 0; i < 3; i++) {
-            move();
-        }
-        turnRight();
-        move();
-        turnLeft();
-        for (int i = 0; i < 5; i++) {
-            move();
-        }
-        turnLeft();
-        for (int i = 0; i < 2; i++) {
-            move();
-        }
-        turnRight();
-        for (int i = 0; i < 2; i++) {
-            move();
-        }
-        turnLeft();
-        for (int i = 0; i < 14; i++) {
-            move();
-        }
-        turnLeft();
-        move();
-        turnLeft();
-        for (int i = 0; i < 13; i++) {
-            move();
-        }
-        turnRight();
-        move();
-        move();
     }
-} 
-}
-class RacerB extends Racer {
-    // Shared control for station access
-    private static final Object stationLock = new Object();
-    private static volatile boolean sanAntonioBOcupada = false;
-    private static volatile boolean cisnerosOcupada = false;
-    
-    // Train ID
-    private final int trainId;
-
-    public RacerB(int trainId, int street, int avenue, Direction direction, int beeps, Color color) {
-        super(trainId, street, avenue, direction, beeps, color);
-        this.trainId = trainId;
     }
 
     // --- Cambios para parada en estación extrema ---
@@ -703,8 +714,8 @@ class RacerB extends Racer {
         while (true) {
             sanJavierToSanAntonio();
             if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) break;
-           sanAntonioToSanJavier();
-           if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) break;
+            sanAntonioToSanJavier();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) break;
         }
 
         while (!MiPrimerRobot.goToTaller.get()) {
@@ -714,7 +725,7 @@ class RacerB extends Racer {
                 e.printStackTrace(); 
             }  
         }
-        irAlTaller();
+        irAlTallerB();
     }
 
     private void initialize() {
@@ -728,252 +739,207 @@ class RacerB extends Racer {
             move(); move();
             turnLeft();
         }
-       
         moveToSanJavier();
     }
 
     public void sanJavierToSanAntonio() {
         System.out.println("Tren " + trainId + " iniciando ruta San Javier → San Antonio");
         
-        // Station coordinates in order of visit (San Javier circuit + way to San Antonio)
-        int[][] estaciones = {
-            {16, 1},  // San Javier start
-            {14, 5},  // Santa Lucía
-            {13, 9},  // Floresta
-            {13, 12}, // Estadio/Cisneros
-            {14, 15}, // San Antonio B
-            {14, 27}  // Final point at San Antonio
-        };
+        // En Cisneros (13,12)
+        if (currentStreet == 13 && currentAvenue == 12) {
+            try {
+                StationControl.waitForSanAntonioB(trainId, currentStreet, currentAvenue);
+                
+                // Movimiento hacia San Antonio B - NO GIRAR en Cisneros
+                move(); // (14,12)
+                move(); // (14,13)
+                move(); // (14,14)
+                move(); // (14,15) - San Antonio B
+                
+                StationControl.enterSanAntonioB(trainId);
+                
+                // Parada en estación
+                Thread.sleep(3000);
+                
+                // Preparar para salir - AQU es donde debe girar
+                StationControl.prepareLeaveSanAntonioB(trainId);
+                turnLeft(); 
+                turnLeft();
+                
+                // Movimiento de salida
+                move(); // (14,14)
+                move(); // (14,13)
+                move(); // (14,12)
+                
+                StationControl.completeLeaveSanAntonioB(trainId);
+                
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            return;
+        }
         
-        int estacionActual = 0;
+        // Ruta correcta desde San Javier (16,1) hasta San Antonio B
+        // Dos movimientos iniciales
+        for(int i = 0; i < 2; i++) {
+            moveCheckBeeper();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        }
         
-        // Find current station
-        for (int i = 0; i < estaciones.length; i++) {
-            if (getStreet() == estaciones[i][0] && getAvenue() == estaciones[i][1]) {
-                estacionActual = i;
-                break;
+        // Giro a la izquierda y 5 movimientos
+        turnLeft();
+        for(int i = 0; i < 5; i++) {
+            moveCheckBeeper();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        }
+        
+        // Giro a la derecha y un movimiento
+        turnRight();
+        moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        
+        // Giro a la izquierda y 8 movimientos (en el #6 llega a Cisneros)
+        turnLeft();
+        for(int i = 0; i < 8; i++) {
+            moveCheckBeeper();
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+            // Si estamos en el sexto movimiento, estamos en Cisneros
+            if (i == 5) {
+                try {
+                    StationControl.waitForSanAntonioB(trainId, currentStreet, currentAvenue);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
         }
         
+        // Giro a la izquierda y un movimiento
+        turnLeft();
+        moveCheckBeeper();
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
         
-        // Follow the route from current station to San Antonio
-        while (estacionActual < estaciones.length) {
-            // Current position
-            int currentStreet = getStreet();
-            int currentAvenue = getAvenue();
+        // Giro a la derecha y movimiento final a San Antonio B
+        turnRight();
+        moveCheckBeeper(); // Llegada a San Antonio B
+        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+        turnLeft();
+        turnLeft(); 
 
+        try {
+            StationControl.enterSanAntonioB(trainId);
+            // Parada en estación
+            Thread.sleep(3000);
+            
+            // Preparar para salir
+            StationControl.prepareLeaveSanAntonioB(trainId);
+            
+            
+            // Movimiento de salida
+            move(); // (14,14)
+            move(); // (14,13)
+            move(); // (14,12)
+            
+            StationControl.completeLeaveSanAntonioB(trainId);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    public void sanAntonioToSanJavier() {
+        try {
+            // Asegurarse de que el tren anterior haya salido completamente
+            Thread.sleep(500);
+            
+            for(int i = 0; i < 6; i++) {
                 moveCheckBeeper();
                 if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
-            moveCheckBeeper();
+            }
+            
+            
+            
+            turnRight();
+            moveCheckBeeper(); 
             if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+            
+            
             turnLeft();
             for(int i = 0; i < 6; i++) {
                 moveCheckBeeper();
                 if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
             }
+            
             turnRight();
+            moveCheckBeeper(); 
+            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
             moveCheckBeeper();
             if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
+            
             turnLeft();
-            for(int i = 0; i < 7; i++) {
-                moveCheckBeeper();
-                if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
-                
-            }
-
             
-            
-            
-    if (currentStreet == 13 && currentAvenue == 12) {
-        // Esperar en Cisneros si San Antonio B está ocupada o si hay tren en (14,13)
-        synchronized (stationLock) {
-            while (sanAntonioBOcupada || TrainControl.isPositionOccupied(14, 13)) {
-                try {
-                    System.out.println("Tren " + trainId + " esperando en Cisneros porque San Antonio B está ocupada o hay tren en (14,13)");
-                    stationLock.wait();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-            // Marcar transición
-            cisnerosOcupada = true;
-            System.out.println("Tren " + trainId + " en tránsito Cisneros → San Antonio B");
-            // Marcar San Antonio B como ocupada ANTES de salir de Cisneros
-            sanAntonioBOcupada = true;
-                // Ahora sí, salir de Cisneros y entrar a San Antonio B
-            
-        }
-            move(); // (14,12)
+             moveCheckBeeper();
             if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
-            turnLeft();   // Face East
-            move();  // (14,13)
+            
+            turnLeft();
+           
+            moveCheckBeeper();
             if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
-            turnRight();
-            move(); // (14,15) - San Antonio B
-            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
-
-        
-
-        // Liberar Cisneros después de salir
-        synchronized (stationLock) {
-            cisnerosOcupada = false;
-            stationLock.notifyAll();
-        }
-
-        // Parada corta en San Antonio B
-        try {
-            Thread.sleep(1500);
+            
+            
+            System.out.println("Tren " + trainId + " llego a San Javier");
+            
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-
-        estacionActual++;
-        continue;
-}
-            
-            // At San Antonio B, moving toward San Antonio
-            if (currentStreet == 14 && currentAvenue == 15) {
-                // Already spent time at the station above, now continue to San Antonio
-                turnLeft(); turnLeft(); // Turn to face West (prepare for return journey)
-                
-                // Release San Antonio B before leaving
-                synchronized (stationLock) {
-                    
-                    sanAntonioBOcupada = false;
-                    stationLock.notifyAll();
-                    System.out.println("Tren " + trainId + " ha liberado San Antonio B");
-                }
-               // sanAntonioToSanJavier();
-                return; // Exit the method after returning
-            }
-            estacionActual++;
-        }
     }
-    
-        public void sanAntonioToSanJavier() {
-        System.out.println("Tren " + trainId + " iniciando ruta San Antonio → San Javier desde (" + getStreet() + "," + getAvenue() + ")");
-        
-        // Liberar San Antonio B al salir
-        synchronized (stationLock) {
-            sanAntonioBOcupada = false;
-            stationLock.notifyAll();
-            System.out.println("Tren " + trainId + " ha liberado San Antonio B");
-        }
-        
-        // Desde San Antonio B (14,15) hacia Cisneros (13,12)
-        turnLeft(); // Girar hacia el Norte si no está ya orientado
-        turnLeft(); // Ahora mirando hacia el Oeste
-        
-        // Ir hacia Cisneros
-        for(int i = 0; i < 3; i++) { // (14,14), (14,13), (14,12)
-            moveCheckBeeper();
-            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
-        }
-        turnRight(); // Girar hacia el Norte
-        moveCheckBeeper(); // (13,12) - Cisneros
-        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
-        
-        // Desde Cisneros (13,12) hacia Floresta (13,9)
-        turnLeft(); // Girar hacia el Oeste
-        for(int i = 0; i < 3; i++) { // (13,11), (13,10), (13,9)
-            moveCheckBeeper();
-            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
-        }
-        
-        // Desde Floresta (13,9) hacia Santa Lucía (14,5)
-        for(int i = 0; i < 4; i++) { // (13,8), (13,7), (13,6), (13,5)
-            moveCheckBeeper();
-            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
-        }
-        turnRight(); // Girar hacia el Sur
-        moveCheckBeeper(); // (14,5) - Santa Lucía
-        if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
-        
-        // Desde Santa Lucía (14,5) hacia San Javier (16,1)
-        turnLeft(); // Girar hacia el Oeste
-        for(int i = 0; i < 2; i++) { // (14,4), (14,3)
-            moveCheckBeeper();
-            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
-        }
-        turnRight(); // Girar hacia el Sur
-        for(int i = 0; i < 2; i++) { // (15,3), (16,3)
-            moveCheckBeeper();
-            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
-        }
-        turnLeft(); // Girar hacia el Oeste
-        for(int i = 0; i < 2; i++) { // (16,2), (16,1)
-            moveCheckBeeper();
-            if (!MiPrimerRobot.startSignal.get() && enEstacionExtrema()) return;
-        }
-        
-        System.out.println("Tren " + trainId + " llegó a San Javier en (" + getStreet() + "," + getAvenue() + ")");
-    }
-    
     
     public void moveToSanJavier() {
-        // Initial positioning to San Javier station area
         for(int i = 0; i < 2; i++) {
             super.move();
         }
-        
-        turnRight(); 
-        for(int i = 0; i < 3; i++) {
-            super.move(); 
-        }
-        
         turnRight();
-        super.move();
-        
-        turnLeft(); 
         for(int i = 0; i < 3; i++) {
             super.move();
         }
-
+        turnRight();
+        super.move();
+        turnLeft();
+        for(int i = 0; i < 3; i++) {
+            super.move();
+        }
         turnRight();
         for(int i = 0; i < 2; i++) {
-            super.move(); 
+            super.move();
         }
-
         turnLeft();
-        for (int i = 0; i < 3; i++) {
-            super.move(); 
+        for(int i = 0; i < 3; i++) {
+            super.move();
         }
-        
-        turnRight(); 
-        for (int i = 0; i < 2; i++) {
-            super.move(); 
+        turnRight();
+        for(int i = 0; i < 2; i++) {
+            super.move();
         }
-
         turnLeft();
-        for (int i = 0; i < 9; i++) {
-            super.move(); 
+        for(int i = 0; i < 9; i++) {
+            super.move();
         }
-
         turnRight();
-        for (int i = 0; i < 4; i++) {
-            super.move(); 
+        for(int i = 0; i < 4; i++) {
+            super.move();
         }
-
         turnRight();
-        super.move(); 
-
-        turnLeft(); 
-        for (int i = 0; i < 5; i++) {
-            super.move(); 
-        }
-
-        turnRight();
-        for (int i = 0; i < 2; i++) {
-            super.move(); 
-        }
-
-        turnLeft(); 
         super.move();
-        
-        turnLeft(); 
+        turnLeft();
+        for(int i = 0; i < 5; i++) {
+            super.move();
+        }
+        turnRight();
+        for(int i = 0; i < 2; i++) {
+            super.move();
+        }
+        turnLeft();
         super.move();
-        
-        
+        turnLeft();
+        super.move();
     }
 }
     
